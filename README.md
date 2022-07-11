@@ -47,7 +47,7 @@ Execute the file `nanoid.sql` in order to create the `nanoid()` function. That i
 * **Patrick Bösch** - *Initial work* - [itsmefox](https://github.com/itsmefox)
 * **Nikola Stanković** - *Initial work* - [botscripter](https://github.com/botscripter)
 
-See also the list of [contributors](https://github.com/viascom/spring-boot-starter-maintenance/contributors) who participated in this project. 💕
+See also the list of [contributors](https://github.com/viascom/nanoid-postgres/contributors) who participated in this project. 💕
 
 ## License
 
