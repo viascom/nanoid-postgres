@@ -1,5 +1,7 @@
 # Nano ID for PostgreSQL
 
+_Inspired by the following parent project: [ai/nanoid](https://github.com/ai/nanoid)_
+
 <img src="./logo.svg" align="right" alt="Nano ID logo by Anton Lovchikov" width="180" height="94">
 
 A tiny, secure, URL-friendly, unique string ID generator for Postgres.
