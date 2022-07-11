@@ -18,9 +18,22 @@ SELECT nanoid();
 ```
 
 ```sql
-CREATE TABLE mytable
-(
+CREATE TABLE mytable (
   id char(21) DEFAULT nanoid() PRIMARY KEY
+);
+
+or
+
+-- To use a custom id size
+CREATE TABLE mytable (
+  id char(14) DEFAULT nanoid(14) PRIMARY KEY
+);
+
+or
+
+-- To use a custom id size and a custom alphabet
+CREATE TABLE mytable (
+  id char(21) DEFAULT nanoid(12, 'ABC123') PRIMARY KEY
 );
 ```
 
