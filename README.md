@@ -7,15 +7,35 @@ A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 > “An amazing level of senseless perfectionism,
 > which is simply impossible not to respect.”
 
-* **Small.** 130 bytes (minified and gzipped). No dependencies.
-  [Size Limit] controls the size.
-* **Fast.** It is 2 times faster than UUID.
-* **Safe.** It uses hardware random generator. Can be used in clusters.
+* **Small.** Just a simple Postgres function.
+* **Safe.** It uses pgcrypto random generator.
 * **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9_-`).
   So ID size was reduced from 36 to 21 symbols.
 
+## Use
 ```sql
 SELECT nanoid();
 ```
 
-Check out the root project: [ai/nanoid](https://github.com/ai/nanoid)
+```sql
+CREATE TABLE mytable
+(
+  id char(21) DEFAULT nanoid() PRIMARY KEY
+);
+```
+
+## Getting Started
+
+Execute the file `nanoid.sql` in order to create the `nanoid()` function. That is everything.
+
+
+## Authors 🖥️
+
+* **Patrick Bösch** - *Initial work* - [itsmefox](https://github.com/itsmefox)
+* **Nikola Stanković** - *Initial work* - [botscripter](https://github.com/botscripter)
+
+See also the list of [contributors](https://github.com/viascom/spring-boot-starter-maintenance/contributors) who participated in this project. 💕
+
+## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
