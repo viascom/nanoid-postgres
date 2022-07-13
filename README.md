@@ -35,7 +35,7 @@ or
 
 -- To use a custom id size and a custom alphabet
 CREATE TABLE mytable (
-  id char(21) DEFAULT nanoid(12, 'ABC123') PRIMARY KEY
+  id char(12) DEFAULT nanoid(12, 'ABC123') PRIMARY KEY
 );
 ```
 
