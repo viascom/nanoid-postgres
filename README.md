@@ -41,7 +41,7 @@ CREATE TABLE mytable (
 
 ## Getting Started
 
-Execute the file `nanoid.sql` in order to create the `nanoid()` function. That is everything.
+Execute the file `nanoid.sql` in order to create on your defined schema the `nanoid()` function.
 
 
 ## Authors 🖥️
