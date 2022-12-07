@@ -47,7 +47,7 @@ Execute the file `nanoid.sql` in order to create on your defined schema the `nan
 ## Authors 🖥️
 
 * **Patrick Bösch** - *Initial work* - [itsmefox](https://github.com/itsmefox)
-* **Nikola Stanković** - *Initial work* - [botscripter](https://github.com/botscripter)
+* **Nikola Stanković** - *Initial work* - [nik-sta](https://github.com/nik-sta)
 
 See also the list of [contributors](https://github.com/viascom/nanoid-postgres/contributors) who participated in this project. 💕
 
