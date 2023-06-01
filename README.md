@@ -16,7 +16,9 @@ A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 
 ## Use
 ```sql
-SELECT nanoid();
+SELECT nanoid(); -- creates an id, with the defaults of the created nanoid() function.
+SELECT nanoid(4); -- size parameter set to return 4 digit ids only
+SELECT nanoid(3, 'abcdefghij'); -- custom size and alphabet parameters defined. nanoid() generates ids concerning them
 ```
 
 ```sql
