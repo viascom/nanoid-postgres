@@ -32,13 +32,13 @@ AS
 $$
 DECLARE
     idBuilder      text := '';
-    i              int  := 0;
+    counter        int  := 0;
     bytes          bytea;
     alphabetIndex  int;
-    mask           int;
-    step           int;
     alphabetArray  text[];
     alphabetLength int;
+    mask           int;
+    step           int;
 BEGIN
     alphabetArray := regexp_split_to_array(alphabet, '');
     alphabetLength := array_length(alphabetArray, 1);
@@ -48,19 +48,19 @@ BEGIN
     while true
         loop
             bytes := gen_random_bytes(step);
-            while i < step
+            while counter < step
                 loop
-                    alphabetIndex := (get_byte(bytes, i) & mask) + 1;
+                    alphabetIndex := (get_byte(bytes, counter) & mask) + 1;
                     if alphabetIndex <= alphabetLength then
                         idBuilder := idBuilder || alphabetArray[alphabetIndex];
                         if length(idBuilder) = size then
                             return idBuilder;
                         end if;
                     end if;
-                    i := i + 1;
+                    counter := counter + 1;
                 end loop;
 
-            i := 0;
+            counter := 0;
         end loop;
 END
 $$;
