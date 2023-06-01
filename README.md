@@ -47,6 +47,19 @@ Execute the file `nanoid.sql` to create the `nanoid()` function on your defined 
 
 **Manually create the function in each database:** You can connect to each database and create the function. This function can be created manually or through a script if you have many databases. Remember to manage updates to the function. If you change the function in one database, those changes will only be reflected in the other databases if you update each function.
 
+### Adding to the default template database
+
+**Use a template database:** If you often create databases that need to have the same set of functions, you could create a template database that includes these functions. Then, when you create a new database, you can specify this template, and PostgreSQL will make the new database a copy of the template.
+
+Here's how to do that:
+1. Connect to template1 database:
+2. Then, run your nanoid() function creation code.
+
+*If the function is only needed for specific applications, it might be better to create it manually in each database where it's needed or create a custom template database that includes this function and use that template when creating new databases for these applications.*
+
+Also, note that changes to template1 won't affect existing databases, only new ones created after the changes. Existing databases will need to have the function added manually if required.
+
+Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
 
 ## Authors 🖥️
 
