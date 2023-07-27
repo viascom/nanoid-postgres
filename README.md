@@ -41,6 +41,10 @@ CREATE TABLE mytable (
 );
 ```
 
+```
+ALTER TABLE mytable ALTER COLUMN id SET DEFAULT nanoid();
+```
+
 ## Getting Started
 
 Execute the file `nanoid.sql` to create the `nanoid()` function on your defined schema. The nanoid() function will only be available in the specific database where you run the SQL code provided.
