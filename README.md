@@ -6,13 +6,12 @@ _Inspired by the following parent project: [ai/nanoid](https://github.com/ai/nan
 
 A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 
-> “An amazing level of senseless perfectionism,
-> which is simply impossible not to respect.”
+> “An amazing level of senseless perfectionism, which is simply impossible not to respect.”
 
 * **Small.** Just a simple Postgres function.
-* **Safe.** It uses pgcrypto random generator.
-* **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9_-`).
-  So ID size was reduced from 36 to 21 symbols.
+* **Safe.** It uses pgcrypto random generator. Can be used in clusters.
+* **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9_-`). So ID size was reduced from 36 to 21 symbols.
+* **Portable**. Nano ID was ported to [20 programming languages](https://github.com/ai/nanoid/blob/main/README.md#other-programming-languages).
 
 ## Use
 ```sql
@@ -60,6 +59,10 @@ Here's how to do that:
 Also, note that changes to template1 won't affect existing databases, only new ones created after the changes. Existing databases will need to have the function added manually if required.
 
 Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
+
+## Using MySQL/MariaDB?
+
+If you're using MySQL or MariaDB and you found this library helpful, we have a similar library for MySQL/MariaDB too! Check out our (Nano ID for MySQL/MariaDB)[https://github.com/viascom/nanoid-mysql-mariadb] repository to use the same capabilities in your MySQL/MariaDB databases.
 
 ## Authors 🖥️
 
