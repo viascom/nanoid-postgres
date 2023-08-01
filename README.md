@@ -11,7 +11,7 @@ A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 * **Small.** Just a simple Postgres function.
 * **Safe.** It uses pgcrypto random generator. Can be used in clusters.
 * **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9_-`). So ID size was reduced from 36 to 21 symbols.
-* **Portable**. Nano ID was ported to [20 programming languages](https://github.com/ai/nanoid/blob/main/README.md#other-programming-languages).
+* **Portable**. Nano ID was ported to [over 20 programming languages](https://github.com/ai/nanoid/blob/main/README.md#other-programming-languages).
 
 ## Use
 ```sql
