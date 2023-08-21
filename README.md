@@ -42,6 +42,9 @@ CREATE TABLE mytable (
 
 ## Getting Started
 
+### Requirements
+* PostgreSQL 9.4 or newer
+
 Execute the file `nanoid.sql` to create the `nanoid()` function on your defined schema. The nanoid() function will only be available in the specific database where you run the SQL code provided.
 
 **Manually create the function in each database:** You can connect to each database and create the function. This function can be created manually or through a script if you have many databases. Remember to manage updates to the function. If you change the function in one database, those changes will only be reflected in the other databases if you update each function.
