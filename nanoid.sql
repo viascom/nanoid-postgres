@@ -28,6 +28,7 @@ CREATE OR REPLACE FUNCTION nanoid(
     RETURNS text
     LANGUAGE plpgsql
     volatile
+    PARALLEL UNSAFE
 AS
 $$
 DECLARE
