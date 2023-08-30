@@ -21,13 +21,14 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE OR REPLACE FUNCTION a_nanoid(
+CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21,
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 )
     RETURNS text
     LANGUAGE plpgsql
-    volatile
+    VOLATILE
+    PARALLEL SAFE
 AS
 $$
 DECLARE
