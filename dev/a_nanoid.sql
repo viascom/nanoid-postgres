@@ -21,14 +21,13 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE OR REPLACE FUNCTION nanoid(
+CREATE OR REPLACE FUNCTION a_nanoid(
     size int DEFAULT 21,
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 )
     RETURNS text
     LANGUAGE plpgsql
-    VOLATILE
-    PARALLEL SAFE
+    volatile
 AS
 $$
 DECLARE
@@ -38,26 +37,30 @@ DECLARE
     alphabetIndex  int;
     alphabetArray  text[];
     alphabetLength int;
+    mask           int;
     step           int;
 BEGIN
     alphabetArray := regexp_split_to_array(alphabet, '');
     alphabetLength := array_length(alphabetArray, 1);
+    mask := (2 << cast(floor(log(alphabetLength - 1) / log(2)) as int)) - 1;
+    step := cast(ceil(1.6 * mask * size / alphabetLength) AS int);
 
-    step := (size * 8 / floor(log(alphabetLength) / log(2)))::int + 1;
+    while true
+        loop
+            bytes := gen_random_bytes(step);
+            while counter < step
+                loop
+                    alphabetIndex := (get_byte(bytes, counter) & mask) + 1;
+                    if alphabetIndex <= alphabetLength then
+                        idBuilder := idBuilder || alphabetArray[alphabetIndex];
+                        if length(idBuilder) = size then
+                            return idBuilder;
+                        end if;
+                    end if;
+                    counter := counter + 1;
+                end loop;
 
-    LOOP
-        bytes := gen_random_bytes(step);
-
-        FOR counter IN 1..step
-            LOOP
-                alphabetIndex := ((get_byte(bytes, counter - 1) % alphabetLength) + 1);
-                idBuilder := idBuilder || alphabetArray[alphabetIndex];
-                EXIT WHEN length(idBuilder) = size;
-            END LOOP;
-
-        EXIT WHEN length(idBuilder) = size;
-    END LOOP;
-
-    RETURN idBuilder;
+            counter := 0;
+        end loop;
 END
 $$;

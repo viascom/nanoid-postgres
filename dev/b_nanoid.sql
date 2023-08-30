@@ -21,7 +21,7 @@
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
-CREATE OR REPLACE FUNCTION nanoid(
+CREATE OR REPLACE FUNCTION b_nanoid(
     size int DEFAULT 21,
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
 )
