@@ -1,0 +1,1 @@
+-- PLACE IMPLEMENTATION B 'b_nanoid()' HERE
