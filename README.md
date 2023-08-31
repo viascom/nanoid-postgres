@@ -137,12 +137,6 @@ capabilities in your MySQL/MariaDB databases.
 
 Absolutely! Here's a revised section for your README:
 
----
-
-Got it! Let's keep it welcoming and straightforward, without emphasizing the number of current developers.
-
----
-
 ## 🌱 Contributors Welcome
 
 - **Encountered a Bug?** Let us know with an issue. Every bit of feedback helps enhance the project.
