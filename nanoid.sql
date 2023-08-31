@@ -72,7 +72,7 @@ $$;
 
 -- Generates an optimized random string of a specified size using the given alphabet, mask, and step.
 -- This optimized version is designed for higher performance and lower memory overhead.
--- No checks are performed! Use it only if you know what you are doing.
+-- No checks are performed! Use it only if you really know what you are doing.
 DROP FUNCTION IF EXISTS nanoid_optimized(int, text, int, int);
 CREATE OR REPLACE FUNCTION nanoid_optimized(
     size int, -- The desired length of the generated string.
