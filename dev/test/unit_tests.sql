@@ -59,7 +59,7 @@ $$
                 ASSERT generated_id ~ '^[A-Z0-9]*$', 'Size 17 (uppercase + numbers) nanoid contains invalid characters';
             END LOOP;
 
---         -- Intentional false positive: use default size but with a mismatched regex pattern
+        --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
 --             LOOP
 --                 generated_id := nanoid();
