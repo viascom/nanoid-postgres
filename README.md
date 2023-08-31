@@ -92,8 +92,7 @@ re passing.
 ### Function Signature
 
 ```sql
-nanoid_optimized
-(
+nanoid_optimized(
     size int,
     alphabet text,
     mask int,
