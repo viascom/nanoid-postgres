@@ -14,7 +14,7 @@ A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 * **Portable**. Nano ID was ported
   to [over 20 programming languages](https://github.com/ai/nanoid/blob/main/README.md#other-programming-languages).
 
-## Use
+## How to use
 
 ```sql
 SELECT nanoid(); -- Simplest way to use this function. Creates an id, with the defaults of the created nanoid() function.
@@ -24,24 +24,21 @@ SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85); -- nanoid() could
 ```
 
 ```sql
-CREATE TABLE mytable
-(
+CREATE TABLE mytable(
     id char(21) DEFAULT nanoid() PRIMARY KEY
 );
 
 or
 
 -- To use a custom id size
-CREATE TABLE mytable
-(
+CREATE TABLE mytable(
     id char(14) DEFAULT nanoid(14) PRIMARY KEY
 );
 
 or
 
 -- To use a custom id size and a custom alphabet
-CREATE TABLE mytable
-(
+CREATE TABLE mytable(
     id char(12) DEFAULT nanoid(12, 'ABC123') PRIMARY KEY
 );
 ```
@@ -147,7 +144,7 @@ All relevant details about the project can be found in this README.
 
 Your active participation 🤝 is a cornerstone of **nanoid-postgres**. Thank you for joining us on this journey.
 
-## Authors 🖥️
+## 🖥️ Authors
 
 * **Patrick Bösch** - *Initial work* - [itsmefox](https://github.com/itsmefox)
 * **Nikola Stanković** - *Initial work* - [nik-sta](https://github.com/nik-sta)
