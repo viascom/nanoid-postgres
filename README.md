@@ -77,6 +77,25 @@ databases will need to have the function added manually if required.
 
 Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
 
+## Calculating the additional bytes factor for a custom alphabet
+
+If you change the alphabet of the `nanoid()` function, you could optimize the performance by calculating a new additional 
+bytes factor with the following SQL statement:
+
+```sql
+WITH input as (SELECT '23456789abcdefghijklmnopqrstuvwxyz' as alphabet)
+SELECT round(1 + abs((((2 << cast(floor(log(length(alphabet) - 1) / log(2)) as int)) - 1) - length(alphabet)::numeric) / length(alphabet)), 2) as "Optimal additional bytes factor"
+FROM input;
+
+-- The resulting value can then be used f.e. as follows:
+SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85);
+
+```
+
+Utilizing a custom-calculated additional bytes factor in `nanoid()`  enhances string generation performance. This factor 
+determines how many bytes are generated in a single batch, optimizing computational efficiency. Generating an optimal number 
+of bytes per batch minimizes redundant operations and conserves memory.
+
 ## Usage Guide: `nanoid_optimized()`
 
 The `nanoid_optimized()` function is an advanced version of the `nanoid()` function designed for higher performance and
