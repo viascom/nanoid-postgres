@@ -35,8 +35,9 @@ CREATE OR REPLACE FUNCTION nanoid(
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
     VOLATILE
-    LEAKPROOF
     PARALLEL SAFE
+    -- Uncomment the following line if you have superuser privileges
+    -- LEAKPROOF
 AS
 $$
 DECLARE
