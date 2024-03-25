@@ -66,7 +66,7 @@ and PostgreSQL will make the new database a copy of the template.
 Here's how to do that:
 
 1. Connect to template1 database:
-2. Then, run your nanoid() function creation code.
+2. Then, run your `nanoid()` function creation code.
 
 *If the function is only needed for specific applications, it might be better to create it manually in each database
 where needed or create a custom template database that includes this function and use that template when creating new
@@ -144,6 +144,20 @@ SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLM
 
 By following this guide, you can seamlessly integrate the `nanoid_optimized()` function into your projects and enjoy the
 benefits of its optimized performance.
+
+### LEAKPROOF Setting
+
+#### Default Configuration
+The `nanoid()` function is configured without the `LEAKPROOF` attribute by default to ensure compatibility across diverse 
+environments, including cloud platforms and managed services, without the need for superuser privileges.
+
+#### When to Enable LEAKPROOF
+Enabling `LEAKPROOF` is optional and beneficial in environments that require enhanced security measures, such as those 
+utilizing row-level security (RLS). This setting should be considered if you have superuser access and seek to further 
+restrict information leakage.
+
+**Note:** To apply the LEAKPROOF attribute, uncomment the LEAKPROOF line in the function definition. This setting 
+is permissible only for superusers due to its implications for database security and operation.
 
 ## Using MySQL/MariaDB?
 
