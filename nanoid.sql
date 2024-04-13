@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Viascom Ltd liab. Co
+ * Copyright 2024 Viascom Ltd liab. Co
  *
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -84,8 +84,9 @@ CREATE OR REPLACE FUNCTION nanoid_optimized(
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
     VOLATILE
-    LEAKPROOF
     PARALLEL SAFE
+    -- Uncomment the following line if you have superuser privileges
+    -- LEAKPROOF
 AS
 $$
 DECLARE
