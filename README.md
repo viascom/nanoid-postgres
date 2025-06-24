@@ -79,8 +79,8 @@ Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-a
 
 ## Calculating the additional bytes factor for a custom alphabet
 
-If you change the alphabet of the `nanoid()` function, you could optimize the performance by calculating a new additional 
-bytes factor with the following SQL statement:
+If you change the alphabet of the `nanoid()` function, you could optimize the performance by calculating a new
+additional bytes factor with the following SQL statement:
 
 ```sql
 WITH input as (SELECT '23456789abcdefghijklmnopqrstuvwxyz' as alphabet)
@@ -89,12 +89,11 @@ FROM input;
 
 -- The resulting value can then be used f.e. as follows:
 SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85);
-
 ```
 
-Utilizing a custom-calculated additional bytes factor in `nanoid()`  enhances string generation performance. This factor 
-determines how many bytes are generated in a single batch, optimizing computational efficiency. Generating an optimal number 
-of bytes per batch minimizes redundant operations and conserves memory.
+Utilizing a custom-calculated additional bytes factor in `nanoid()`  enhances string generation performance. This factor
+determines how many bytes are generated in a single batch, optimizing computational efficiency. Generating an optimal
+number of bytes per batch minimizes redundant operations and conserves memory.
 
 ## Usage Guide: `nanoid_optimized()`
 
@@ -148,15 +147,17 @@ benefits of its optimized performance.
 ### LEAKPROOF Setting
 
 #### Default Configuration
-The `nanoid()` function is configured without the `LEAKPROOF` attribute by default to ensure compatibility across diverse 
-environments, including cloud platforms and managed services, without the need for superuser privileges.
+
+The `nanoid()` function is configured without the `LEAKPROOF` attribute by default to ensure compatibility across
+diverse environments, including cloud platforms and managed services, without the need for superuser privileges.
 
 #### When to Enable LEAKPROOF
-Enabling `LEAKPROOF` is optional and beneficial in environments that require enhanced security measures, such as those 
-utilizing row-level security (RLS). This setting should be considered if you have superuser access and seek to further 
+
+Enabling `LEAKPROOF` is optional and beneficial in environments that require enhanced security measures, such as those
+utilizing row-level security (RLS). This setting should be considered if you have superuser access and seek to further
 restrict information leakage.
 
-**Note:** To apply the LEAKPROOF attribute, uncomment the LEAKPROOF line in the function definition. This setting 
+**Note:** To apply the LEAKPROOF attribute, uncomment the LEAKPROOF line in the function definition. This setting
 is permissible only for superusers due to its implications for database security and operation.
 
 ## Using MySQL/MariaDB?
@@ -169,7 +170,8 @@ capabilities in your MySQL/MariaDB databases.
 
 - 🐛 **Encountered a Bug?** Let us know with an issue. Every bit of feedback helps enhance the project.
 
-- 💡 **Interested in Contributing Code?** Simply fork and submit a pull request. Every contribution, no matter its size, is valued.
+- 💡 **Interested in Contributing Code?** Simply fork and submit a pull request. Every contribution, no matter its size,
+  is valued.
 
 - 📣 **Have Some Ideas?** We're always open to suggestions. Initiate an issue for discussions or to share your insights.
 
