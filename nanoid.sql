@@ -35,7 +35,9 @@ CREATE OR REPLACE FUNCTION nanoid(
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
     VOLATILE
-    PARALLEL SAFE
+    -- PL/pgSQL advances the command counter and takes new snapshots when evaluating volatile expressions,
+    -- which is forbidden in parallel mode ("cannot start commands during a parallel operation", see issue #16).
+    PARALLEL UNSAFE
     -- Uncomment the following line if you have superuser privileges
     -- LEAKPROOF
 AS
@@ -64,7 +66,7 @@ BEGIN
     step := cast(ceil(additionalBytesFactor * mask * size / alphabetLength) AS int);
 
     IF step > 1024 THEN
-        step := 1024; -- The step size % can''t be bigger then 1024!
+        step := 1024; -- The step size % can't be bigger than 1024!
     END IF;
 
     RETURN nanoid_optimized(size, alphabet, mask, step);
@@ -84,7 +86,9 @@ CREATE OR REPLACE FUNCTION nanoid_optimized(
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
     VOLATILE
-    PARALLEL SAFE
+    -- PL/pgSQL advances the command counter and takes new snapshots when evaluating volatile expressions,
+    -- which is forbidden in parallel mode ("cannot start commands during a parallel operation", see issue #16).
+    PARALLEL UNSAFE
     -- Uncomment the following line if you have superuser privileges
     -- LEAKPROOF
 AS
