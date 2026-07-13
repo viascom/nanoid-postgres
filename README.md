@@ -208,6 +208,10 @@ Like the original JavaScript library's `nanoid/non-secure` module, this reposito
 works without the pgcrypto extension and generates IDs about 2.4 times faster than `nanoid()` in our benchmarks
 (PostgreSQL 17, 100k IDs with default parameters), but the IDs are predictable.
 
+Note that running the full `nanoid.sql` still executes `CREATE EXTENSION IF NOT EXISTS pgcrypto` for `nanoid()`. On a
+host where pgcrypto is not available, install only the `nanoid_non_secure()` definition from the file; the function
+itself has no pgcrypto dependency.
+
 🚫 **Warning**: Do not use `nanoid_non_secure()` where IDs must be unguessable, such as public links, tokens, or any
 security-relevant identifiers. Use `nanoid()` for those cases.
 

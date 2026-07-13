@@ -178,6 +178,20 @@ $$
                 ASSERT generated_id ~ '^[0-9]*$', 'Size 15 (only numbers) nanoid_non_secure contains invalid characters';
             END LOOP;
 
+        -- Non-secure variant: multi-byte alphabet (substr/length operate on characters, not bytes)
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid_non_secure(12, 'äöüαβγ');
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 12, 'Size 12 (multi-byte alphabet) nanoid_non_secure length is incorrect';
+                ASSERT translate(generated_id, 'äöüαβγ', '') = '',
+                    'Size 12 (multi-byte alphabet) nanoid_non_secure contains characters outside the alphabet';
+            END LOOP;
+
+        -- Non-secure variant: single-symbol alphabet
+        generated_id := nanoid_non_secure(5, 'a');
+        ASSERT generated_id = 'aaaaa', 'Size 5 (single-symbol alphabet) nanoid_non_secure is incorrect';
+
         -- Non-secure variant: a size smaller than 1 is rejected
         BEGIN
             generated_id := nanoid_non_secure(0);
