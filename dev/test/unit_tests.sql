@@ -26,6 +26,7 @@ $$
         counter      int;
         numLoops     int := 1000;
         alphabet256  text;
+        error_message text;
     BEGIN
         -- Default parameters
         FOR counter IN 1..numLoops
@@ -106,6 +107,8 @@ $$
                 generated_id := nanoid(21, alphabet256);
                 RAISE NOTICE '%', generated_id;
                 ASSERT LENGTH(generated_id) = 21, 'Size 21 (256-symbol alphabet) nanoid length is incorrect';
+                ASSERT translate(generated_id, alphabet256, '') = '',
+                    'Size 21 (256-symbol alphabet) nanoid contains characters outside the alphabet';
             END LOOP;
 
         -- Alphabets with more than 256 symbols are rejected
@@ -114,7 +117,10 @@ $$
             ASSERT FALSE, 'Alphabet with more than 256 symbols was not rejected';
         EXCEPTION
             WHEN assert_failure THEN RAISE;
-            WHEN raise_exception THEN NULL; -- expected rejection
+            WHEN raise_exception THEN
+                GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+                ASSERT error_message LIKE '%bigger than 256 symbols%',
+                    'Alphabet rejection raised an unexpected error: ' || error_message;
         END;
 
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
