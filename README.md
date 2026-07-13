@@ -43,6 +43,19 @@ CREATE TABLE mytable(
 );
 ```
 
+### Using nanoid() with an existing table
+
+To make `nanoid()` the default of an already existing column, change the column default:
+
+```sql
+ALTER TABLE mytable ALTER COLUMN id SET DEFAULT nanoid();
+```
+
+This only affects future inserts. Existing rows keep their current values, and rows inserted without a value for `id`
+get a freshly generated Nano ID. See the PostgreSQL documentation on
+[changing a column's default value](https://www.postgresql.org/docs/current/ddl-alter.html#DDL-ALTER-COLUMN-DEFAULT)
+for details.
+
 ## Getting Started
 
 ### Requirements
