@@ -38,7 +38,8 @@ DROP FUNCTION IF EXISTS nanoid(int, text);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
-    additionalBytesFactor float DEFAULT 1.6 -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal or greater then 1.
+    additionalBytesFactor float DEFAULT 1.6, -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal or greater then 1.
+    prefix text DEFAULT '' -- An optional prefix prepended to the NanoId String (e.g. 'usr_'). Does not count towards size; NULL behaves like ''.
 )
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
@@ -78,7 +79,7 @@ BEGIN
     -- also keeps absurd sizes from overflowing the cast.
     step := cast(least(1024, ceil(additionalBytesFactor * 256 * size / cutoff)) AS int);
 
-    RETURN nanoid_optimized(size, alphabet, cutoff, step);
+    RETURN coalesce(prefix, '') || nanoid_optimized(size, alphabet, cutoff, step);
 END
 $$;
 
