@@ -22,10 +22,10 @@
 DO
 $$
     DECLARE
-        generated_id text;
-        counter      int;
-        numLoops     int := 1000;
-        alphabet256  text;
+        generated_id  text;
+        counter       int;
+        numLoops      int := 1000;
+        alphabet256   text;
         error_message text;
     BEGIN
         -- Default parameters
@@ -101,6 +101,8 @@ $$
             END LOOP;
 
         -- Size 21, maximum-length alphabet (256 unique symbols)
+        -- Requires a UTF8-encoded database: chr() rejects code points above 255 under
+        -- single-byte encodings. The official PostgreSQL Docker images default to UTF8.
         alphabet256 := (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(192, 447) AS i);
         FOR counter IN 1..numLoops
             LOOP
