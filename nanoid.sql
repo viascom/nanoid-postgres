@@ -136,4 +136,47 @@ BEGIN
 END
 $$;
 
+-- The `nanoid_non_secure()` function generates a compact, URL-friendly identifier using
+-- PostgreSQL's built-in, non-cryptographic random() generator. It is the port of the
+-- `nanoid/non-secure` module of the original JavaScript library: faster than nanoid()
+-- and independent of the pgcrypto extension, but the generated IDs are predictable.
+-- Do not use it where IDs must be unguessable (e.g. public links or tokens);
+-- use nanoid() for those cases.
+DROP FUNCTION IF EXISTS nanoid_non_secure(int, text);
+CREATE OR REPLACE FUNCTION nanoid_non_secure(
+    size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
+    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' -- The symbols used in the NanoId String. Must contain at least 1 symbol.
+)
+    RETURNS text -- A randomly generated NanoId String
+    LANGUAGE plpgsql
+    VOLATILE
+    -- PL/pgSQL advances the command counter and takes new snapshots when evaluating volatile expressions,
+    -- which is forbidden in parallel mode ("cannot start commands during a parallel operation", see issue #16).
+    PARALLEL UNSAFE
+AS
+$$
+DECLARE
+    idBuilder      text := '';
+    counter        int;
+    alphabetLength int;
+BEGIN
+    IF size IS NULL OR size < 1 THEN
+        RAISE EXCEPTION 'The size must be defined and greater than 0!';
+    END IF;
+
+    IF alphabet IS NULL OR length(alphabet) = 0 THEN
+        RAISE EXCEPTION 'The alphabet can''t be undefined or empty!';
+    END IF;
+
+    alphabetLength := length(alphabet);
+
+    FOR counter IN 1..size
+        LOOP
+            idBuilder := idBuilder || substr(alphabet, 1 + floor(random() * alphabetLength)::int, 1);
+        END LOOP;
+
+    RETURN idBuilder;
+END
+$$;
+
 COMMIT;

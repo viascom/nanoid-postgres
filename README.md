@@ -201,6 +201,35 @@ restrict information leakage.
 **Note:** To apply the LEAKPROOF attribute, uncomment the LEAKPROOF line in the function definition. This setting
 is permissible only for superusers due to its implications for database security and operation.
 
+## Non-secure variant: `nanoid_non_secure()`
+
+Like the original JavaScript library's `nanoid/non-secure` module, this repository also provides a non-secure variant.
+`nanoid_non_secure()` uses PostgreSQL's built-in `random()` generator instead of pgcrypto's `gen_random_bytes()`. It
+works without the pgcrypto extension and generates IDs about 2.4 times faster than `nanoid()` in our benchmarks
+(PostgreSQL 17, 100k IDs with default parameters), but the IDs are predictable.
+
+🚫 **Warning**: Do not use `nanoid_non_secure()` where IDs must be unguessable, such as public links, tokens, or any
+security-relevant identifiers. Use `nanoid()` for those cases.
+
+### Function Signature
+
+```sql
+nanoid_non_secure(
+    size int DEFAULT 21,
+    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+) RETURNS text;
+```
+
+### Example Usage
+
+```sql
+SELECT nanoid_non_secure(); -- 21 symbols from the default alphabet
+SELECT nanoid_non_secure(12, 'abcdefghij'); -- custom size and alphabet
+```
+
+Good use cases are test data, internal short codes, and other identifiers where speed matters more than
+unpredictability.
+
 ## 🧪 Running the tests
 
 The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (latest minor

@@ -160,6 +160,24 @@ $$
         ASSERT LENGTH(generated_id) = 13, 'Mixed-notation prefixed nanoid length is incorrect';
         ASSERT generated_id ~ '^x[-_a-zA-Z0-9]{12}$', 'Mixed-notation prefixed nanoid has a wrong prefix or invalid characters';
 
+        -- Non-secure variant: default parameters
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid_non_secure();
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 21, 'Default nanoid_non_secure length is incorrect';
+                ASSERT generated_id ~ '^[-_a-zA-Z0-9]*$', 'Default nanoid_non_secure contains invalid characters';
+            END LOOP;
+
+        -- Non-secure variant: custom size and alphabet (only numbers)
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid_non_secure(15, '0123456789');
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 15, 'Size 15 (only numbers) nanoid_non_secure length is incorrect';
+                ASSERT generated_id ~ '^[0-9]*$', 'Size 15 (only numbers) nanoid_non_secure contains invalid characters';
+            END LOOP;
+
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
 --             LOOP

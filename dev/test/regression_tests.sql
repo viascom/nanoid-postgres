@@ -108,6 +108,28 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------------------------
+-- nanoid_non_secure() is PL/pgSQL with volatile expressions too, so the issue #16 constraint
+-- applies to it as well: it must be declared PARALLEL UNSAFE to keep parallel plans away.
+-- ---------------------------------------------------------------------------------------------
+DROP TABLE IF EXISTS nanoid_test_ctas_non_secure;
+CREATE TABLE nanoid_test_ctas_non_secure AS
+SELECT nanoid_non_secure() AS id
+FROM nanoid_test_src;
+
+DO
+$$
+DECLARE
+    total bigint;
+BEGIN
+    SELECT count(*) INTO total FROM nanoid_test_ctas_non_secure;
+    ASSERT total = 50000, 'CTAS over nanoid_non_secure produced wrong row count: ' || total;
+
+    SELECT count(*) INTO total FROM nanoid_test_ctas_non_secure WHERE length(id) <> 21;
+    ASSERT total = 0, 'CTAS over nanoid_non_secure produced ids with wrong length';
+END
+$$;
+
+-- ---------------------------------------------------------------------------------------------
 -- No artificial size cap: id generation must work for any requested length, including sizes
 -- that need more than 100 passes over the byte-generation loop (step is capped at 1024, so
 -- 102401 characters with the default alphabet need 101 passes).
@@ -125,4 +147,5 @@ $$;
 DROP TABLE IF EXISTS nanoid_test_src;
 DROP TABLE IF EXISTS nanoid_test_ctas;
 DROP TABLE IF EXISTS nanoid_test_ctas_optimized;
+DROP TABLE IF EXISTS nanoid_test_ctas_non_secure;
 DROP TABLE IF EXISTS nanoid_test_map;
