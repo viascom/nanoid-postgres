@@ -92,11 +92,13 @@ Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-a
 
 ## The additional bytes factor
 
-`nanoid()` batches its random bytes: the step size `ceil(additionalBytesFactor * 256 * size / cutoff)` already accounts
-for the expected share of rejected bytes of your alphabet, so the default factor of `1.6` works well for every alphabet
-(it is the same safety margin the original JavaScript library uses). A higher factor lowers the chance that a second
-`gen_random_bytes()` batch is needed at the cost of more memory per call; a factor closer to `1.0` conserves memory but
-requests follow-up batches more often.
+`nanoid()` batches its random bytes: the step size `min(1024, ceil(additionalBytesFactor * 256 * size / cutoff))`
+already accounts for the expected share of rejected bytes of your alphabet, so the default factor of `1.6` works well for
+every alphabet (it is the same safety margin the original JavaScript library uses). A higher factor lowers the chance
+that a second `gen_random_bytes()` batch is needed at the cost of more memory per call; a factor closer to `1.0`
+conserves memory but requests follow-up batches more often. The step is capped at 1024 because `gen_random_bytes()`
+accepts at most 1024 bytes per call, so once that cap is reached a higher factor can no longer reduce the number of
+follow-up batches.
 
 ```sql
 -- Example: trade a little memory for fewer follow-up batches
