@@ -30,7 +30,7 @@ DROP FUNCTION IF EXISTS nanoid(int, text, float);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 255 symbols.
-    additionalBytesFactor float DEFAULT 1.6 -- The additional bytes factor used for calculating the step size. Must be equal or greater then 1.
+    additionalBytesFactor float DEFAULT 1.6 -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal or greater then 1.
 )
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
@@ -43,10 +43,9 @@ CREATE OR REPLACE FUNCTION nanoid(
 AS
 $$
 DECLARE
-    alphabetArray  text[];
-    alphabetLength int := 64;
-    mask           int := 63;
-    step           int := 34;
+    alphabetLength int;
+    cutoff         int;
+    step           int;
 BEGIN
     IF size IS NULL OR size < 1 THEN
         RAISE EXCEPTION 'The size must be defined and greater than 0!';
@@ -60,27 +59,31 @@ BEGIN
         RAISE EXCEPTION 'The additional bytes factor can''t be less than 1!';
     END IF;
 
-    alphabetArray := regexp_split_to_array(alphabet, '');
-    alphabetLength := array_length(alphabetArray, 1);
-    mask := (2 << cast(floor(log(alphabetLength - 1) / log(2)) as int)) - 1;
-    step := cast(ceil(additionalBytesFactor * mask * size / alphabetLength) AS int);
+    alphabetLength := length(alphabet);
+    -- Random bytes are 0-255. `byte % alphabetLength` would make some symbols more likely
+    -- when 256 is not a multiple of the alphabet length. Bytes greater than or equal to
+    -- `cutoff` are rejected instead, so every symbol keeps an equal chance.
+    cutoff := 256 - (256 % alphabetLength);
+    -- On average `256 / cutoff` random bytes are needed per symbol; the additional bytes
+    -- factor adds a safety margin to cover unlucky streaks of rejected bytes.
+    step := cast(ceil(additionalBytesFactor * 256 * size / cutoff) AS int);
 
     IF step > 1024 THEN
-        step := 1024; -- The step size % can't be bigger than 1024!
+        step := 1024; -- gen_random_bytes() accepts at most 1024 bytes per call!
     END IF;
 
-    RETURN nanoid_optimized(size, alphabet, mask, step);
+    RETURN nanoid_optimized(size, alphabet, cutoff, step);
 END
 $$;
 
--- Generates an optimized random string of a specified size using the given alphabet, mask, and step.
+-- Generates an optimized random string of a specified size using the given alphabet, cutoff, and step.
 -- This optimized version is designed for higher performance and lower memory overhead.
 -- No checks are performed! Use it only if you really know what you are doing.
 DROP FUNCTION IF EXISTS nanoid_optimized(int, text, int, int);
 CREATE OR REPLACE FUNCTION nanoid_optimized(
     size int, -- The desired length of the generated string.
     alphabet text, -- The set of characters to choose from for generating the string.
-    mask int, -- The mask used for mapping random bytes to alphabet indices. Should be `(2^n) - 1` where `n` is a power of 2 less than or equal to the alphabet size.
+    cutoff int, -- The exclusive upper bound for accepted random bytes. Should be `256 - (256 % alphabetLength)`; bytes greater than or equal to it are rejected to avoid modulo bias.
     step int -- The number of random bytes to generate in each iteration. A larger value may speed up the function but increase memory usage.
 )
     RETURNS text -- A randomly generated NanoId String
@@ -97,9 +100,9 @@ DECLARE
     idBuilder      text := '';
     counter        int  := 0;
     bytes          bytea;
-    alphabetIndex  int;
+    randomByte     int;
     alphabetArray  text[];
-    alphabetLength int  := 64;
+    alphabetLength int;
 BEGIN
     alphabetArray := regexp_split_to_array(alphabet, '');
     alphabetLength := array_length(alphabetArray, 1);
@@ -108,9 +111,9 @@ BEGIN
         bytes := gen_random_bytes(step);
         FOR counter IN 0..step - 1
             LOOP
-                alphabetIndex := (get_byte(bytes, counter) & mask) + 1;
-                IF alphabetIndex <= alphabetLength THEN
-                    idBuilder := idBuilder || alphabetArray[alphabetIndex];
+                randomByte := get_byte(bytes, counter);
+                IF randomByte < cutoff THEN
+                    idBuilder := idBuilder || alphabetArray[(randomByte % alphabetLength) + 1];
                     IF length(idBuilder) = size THEN
                         RETURN idBuilder;
                     END IF;

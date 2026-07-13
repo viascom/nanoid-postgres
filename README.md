@@ -90,23 +90,18 @@ databases will need to have the function added manually if required.
 
 Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
 
-## Calculating the additional bytes factor for a custom alphabet
+## The additional bytes factor
 
-If you change the alphabet of the `nanoid()` function, you could optimize the performance by calculating a new
-additional bytes factor with the following SQL statement:
+`nanoid()` batches its random bytes: the step size `ceil(additionalBytesFactor * 256 * size / cutoff)` already accounts
+for the expected share of rejected bytes of your alphabet, so the default factor of `1.6` works well for every alphabet
+(it is the same safety margin the original JavaScript library uses). A higher factor lowers the chance that a second
+`gen_random_bytes()` batch is needed at the cost of more memory per call; a factor closer to `1.0` conserves memory but
+requests follow-up batches more often.
 
 ```sql
-WITH input as (SELECT '23456789abcdefghijklmnopqrstuvwxyz' as alphabet)
-SELECT round(1 + abs((((2 << cast(floor(log(length(alphabet) - 1) / log(2)) as int)) - 1) - length(alphabet)::numeric) / length(alphabet)), 2) as "Optimal additional bytes factor"
-FROM input;
-
--- The resulting value can then be used f.e. as follows:
-SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85);
+-- Example: trade a little memory for fewer follow-up batches
+SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 2.0);
 ```
-
-Utilizing a custom-calculated additional bytes factor in `nanoid()`  enhances string generation performance. This factor
-determines how many bytes are generated in a single batch, optimizing computational efficiency. Generating an optimal
-number of bytes per batch minimizes redundant operations and conserves memory.
 
 ## Usage Guide: `nanoid_optimized()`
 
@@ -123,7 +118,7 @@ re passing.
 nanoid_optimized(
     size int,
     alphabet text,
-    mask int,
+    cutoff int,
     step int
 ) RETURNS text;
 ```
@@ -132,8 +127,8 @@ nanoid_optimized(
 
 - `size`: The desired length of the generated string.
 - `alphabet`: The set of characters to choose from for generating the string.
-- `mask`: The mask used for mapping random bytes to alphabet indices. The value should be `(2^n) - 1`, where `n` is a
-  power of 2 less than or equal to the alphabet size.
+- `cutoff`: The exclusive upper bound for accepted random bytes. The value should be `256 - (256 % length(alphabet))`;
+  bytes greater than or equal to it are rejected to avoid modulo bias.
 - `step`: The number of random bytes to generate in each iteration. A larger value might speed up the function but will
   also increase memory usage.
 
@@ -142,15 +137,15 @@ nanoid_optimized(
 Generate a NanoId String of length 10 using the default alphabet set:
 
 ```sql
-SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 16);
+SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 16);
 ```
 
 ### Tips:
 
 - **Performance**: This function is optimized for performance, so it's ideal for scenarios where high-speed ID
   generation is needed.
-- **Alphabet Set**: The larger your alphabet set, the more unique your generated IDs will be, but also consider the mask
-  and step parameters' adjustments.
+- **Alphabet Set**: The larger your alphabet set, the more unique your generated IDs will be, but also consider the
+  cutoff and step parameters' adjustments.
 - **Customization**: Feel free to adjust the parameters to suit your specific needs, but always be cautious about the
   values you're inputting.
 

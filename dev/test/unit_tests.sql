@@ -80,6 +80,24 @@ $$
                 ASSERT generated_id ~ '^[A-Z0-9]*$', 'Size 17 (uppercase + numbers) nanoid contains invalid characters';
             END LOOP;
 
+        -- Size 5, single-symbol alphabet
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(5, 'a');
+                RAISE NOTICE '%', generated_id;
+                ASSERT generated_id = 'aaaaa', 'Size 5 (single-symbol alphabet) nanoid is incorrect';
+            END LOOP;
+
+        -- Non-power-of-two alphabet (33 symbols): every symbol must be reachable
+        generated_id := nanoid(5000, 'abcdefghijklmnopqrstuvwxyz0123456');
+        ASSERT LENGTH(generated_id) = 5000, 'Size 5000 (33 symbols) nanoid length is incorrect';
+        ASSERT generated_id ~ '^[a-z0-6]*$', 'Size 5000 (33 symbols) nanoid contains invalid characters';
+        FOR counter IN 1..33
+            LOOP
+                ASSERT position(substr('abcdefghijklmnopqrstuvwxyz0123456', counter, 1) in generated_id) > 0,
+                    'Symbol missing in output of 33-symbol alphabet';
+            END LOOP;
+
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
 --             LOOP
