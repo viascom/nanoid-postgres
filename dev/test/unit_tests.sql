@@ -178,6 +178,24 @@ $$
                 ASSERT generated_id ~ '^[0-9]*$', 'Size 15 (only numbers) nanoid_non_secure contains invalid characters';
             END LOOP;
 
+        -- Non-secure variant: a size smaller than 1 is rejected
+        BEGIN
+            generated_id := nanoid_non_secure(0);
+            ASSERT FALSE, 'Size 0 was not rejected by nanoid_non_secure';
+        EXCEPTION
+            WHEN assert_failure THEN RAISE;
+            WHEN raise_exception THEN NULL; -- expected rejection
+        END;
+
+        -- Non-secure variant: an empty alphabet is rejected
+        BEGIN
+            generated_id := nanoid_non_secure(21, '');
+            ASSERT FALSE, 'Empty alphabet was not rejected by nanoid_non_secure';
+        EXCEPTION
+            WHEN assert_failure THEN RAISE;
+            WHEN raise_exception THEN NULL; -- expected rejection
+        END;
+
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
 --             LOOP
