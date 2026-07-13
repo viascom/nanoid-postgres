@@ -25,6 +25,7 @@ $$
         generated_id text;
         counter      int;
         numLoops     int := 1000;
+        alphabet256  text;
     BEGIN
         -- Default parameters
         FOR counter IN 1..numLoops
@@ -97,6 +98,24 @@ $$
                 ASSERT position(substr('abcdefghijklmnopqrstuvwxyz0123456', counter, 1) in generated_id) > 0,
                     'Symbol missing in output of 33-symbol alphabet';
             END LOOP;
+
+        -- Size 21, maximum-length alphabet (256 unique symbols)
+        alphabet256 := (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(192, 447) AS i);
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(21, alphabet256);
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 21, 'Size 21 (256-symbol alphabet) nanoid length is incorrect';
+            END LOOP;
+
+        -- Alphabets with more than 256 symbols are rejected
+        BEGIN
+            generated_id := nanoid(21, alphabet256 || chr(448));
+            ASSERT FALSE, 'Alphabet with more than 256 symbols was not rejected';
+        EXCEPTION
+            WHEN assert_failure THEN RAISE;
+            WHEN raise_exception THEN NULL; -- expected rejection
+        END;
 
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops

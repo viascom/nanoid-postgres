@@ -37,7 +37,7 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 DROP FUNCTION IF EXISTS nanoid(int, text);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
-    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 255 symbols.
+    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
     additionalBytesFactor float DEFAULT 1.6 -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal or greater then 1.
 )
     RETURNS text -- A randomly generated NanoId String
@@ -59,8 +59,8 @@ BEGIN
         RAISE EXCEPTION 'The size must be defined and greater than 0!';
     END IF;
 
-    IF alphabet IS NULL OR length(alphabet) = 0 OR length(alphabet) > 255 THEN
-        RAISE EXCEPTION 'The alphabet can''t be undefined, zero or bigger than 255 symbols!';
+    IF alphabet IS NULL OR length(alphabet) = 0 OR length(alphabet) > 256 THEN
+        RAISE EXCEPTION 'The alphabet can''t be undefined, zero or bigger than 256 symbols!';
     END IF;
 
     IF additionalBytesFactor IS NULL OR additionalBytesFactor < 1 THEN
