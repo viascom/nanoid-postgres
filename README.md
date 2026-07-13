@@ -175,15 +175,16 @@ is permissible only for superusers due to its implications for database security
 
 ## 🧪 Running the tests
 
-The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (latest minor
-of every major version from 9.6 through 18) and runs the unit tests plus regression tests against each of them. The
-regression tests cover the parallel-query scenarios from
+The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (every major
+version from 9.6 through 18 plus the current PostgreSQL 19 prerelease) and runs the unit tests plus regression tests
+against each of them. The images are pulled before each run, so the latest minor of every major is what actually gets
+tested; offline runs fall back to the local image cache. The regression tests cover the parallel-query scenarios from
 [issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation.
 
 Requirements: Docker.
 
 ```bash
-# Test all supported versions (9.6 through 18)
+# Test all supported versions (9.6 through 18 plus the 19 prerelease)
 dev/test/run_tests.sh
 
 # Test only specific versions

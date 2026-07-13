@@ -20,10 +20,11 @@
 # under the License.
 #
 # Runs the nanoid test suite (installation, unit tests, regression tests) against multiple
-# PostgreSQL major versions using the official Docker images (latest minor of each major).
+# PostgreSQL major versions using the official Docker images. Images are pulled before each
+# run so the latest minor of every major is tested; offline runs fall back to the local cache.
 #
 # Usage:
-#   dev/test/run_tests.sh              # all supported versions (9.6 through 18)
+#   dev/test/run_tests.sh              # all supported versions (9.6 through 18 plus the 19 prerelease)
 #   dev/test/run_tests.sh 16 17 18     # only the given versions
 #
 # Requirements: docker. Exits non-zero if any version fails.
@@ -31,7 +32,8 @@
 set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-DEFAULT_VERSIONS="9.6 10 11 12 13 14 15 16 17 18"
+# Bump the 19 prerelease as new betas/RCs land; replace it with plain 19 at GA.
+DEFAULT_VERSIONS="9.6 10 11 12 13 14 15 16 17 18 19beta1"
 VERSIONS="${*:-$DEFAULT_VERSIONS}"
 
 SUMMARY=""
@@ -49,6 +51,13 @@ for VERSION in $VERSIONS; do
     echo "==> PostgreSQL ${VERSION} (${IMAGE})"
 
     docker rm -f "$NAME" >/dev/null 2>&1
+
+    # Pull the latest minor so a stale local cache is never what gets tested. Offline runs
+    # fall back to the cached image.
+    if ! docker pull -q "$IMAGE" >/dev/null 2>&1 &&
+        ! docker pull -q --platform linux/amd64 "$IMAGE" >/dev/null 2>&1; then
+        echo "    (pull failed, using local image if present)"
+    fi
 
     # Older images may not provide a native image for the host architecture; fall back to amd64.
     if ! docker run -d --rm --name "$NAME" -e POSTGRES_PASSWORD=postgres "$IMAGE" >/dev/null 2>&1 &&
