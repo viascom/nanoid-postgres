@@ -19,6 +19,11 @@
  * under the License.
  */
 
+-- The whole install/upgrade runs in one transaction: if any statement fails (for example a
+-- DROP blocked by objects that depend on an old function signature), everything rolls back
+-- and the database keeps its previous, fully working installation.
+BEGIN;
+
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- The `nanoid()` function generates a compact, URL-friendly unique identifier.
@@ -26,7 +31,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- use-cases requiring small, unpredictable IDs (e.g., URL shorteners, generated file names, etc.).
 -- While it comes with a default configuration, the function is designed to be flexible,
 -- allowing for customization to meet specific needs.
-DROP FUNCTION IF EXISTS nanoid(int, text, float);
+-- The 2022-era signature nanoid(int, text) is dropped so positional calls stay unambiguous after
+-- an upgrade. The current signature is intentionally NOT dropped: CREATE OR REPLACE upgrades it
+-- in place, which also works when objects (e.g. column defaults) depend on the function.
+DROP FUNCTION IF EXISTS nanoid(int, text);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 255 symbols.
@@ -66,11 +74,9 @@ BEGIN
     cutoff := 256 - (256 % alphabetLength);
     -- On average `256 / cutoff` random bytes are needed per symbol; the additional bytes
     -- factor adds a safety margin to cover unlucky streaks of rejected bytes.
-    step := cast(ceil(additionalBytesFactor * 256 * size / cutoff) AS int);
-
-    IF step > 1024 THEN
-        step := 1024; -- gen_random_bytes() accepts at most 1024 bytes per call!
-    END IF;
+    -- gen_random_bytes() accepts at most 1024 bytes per call; capping before the int cast
+    -- also keeps absurd sizes from overflowing the cast.
+    step := cast(least(1024, ceil(additionalBytesFactor * 256 * size / cutoff)) AS int);
 
     RETURN nanoid_optimized(size, alphabet, cutoff, step);
 END
@@ -79,6 +85,9 @@ $$;
 -- Generates an optimized random string of a specified size using the given alphabet, cutoff, and step.
 -- This optimized version is designed for higher performance and lower memory overhead.
 -- No checks are performed! Use it only if you really know what you are doing.
+-- The drop is required because the third parameter was renamed (mask -> cutoff) and
+-- CREATE OR REPLACE cannot rename parameters. If dependent objects block the drop, the
+-- transaction rolls back; see the Upgrading section of the README.
 DROP FUNCTION IF EXISTS nanoid_optimized(int, text, int, int);
 CREATE OR REPLACE FUNCTION nanoid_optimized(
     size int, -- The desired length of the generated string.
@@ -122,3 +131,5 @@ BEGIN
     END LOOP;
 END
 $$;
+
+COMMIT;

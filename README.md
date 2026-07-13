@@ -70,6 +70,22 @@ function can be created manually or through a script if you have many databases.
 function. If you change the function in one database, those changes will only be reflected in the other databases if you
 update each function.
 
+## Upgrading
+
+Running `nanoid.sql` again upgrades an existing installation. The script runs in a single transaction: either the
+upgrade completes as a whole or the database keeps its previous, fully working installation.
+
+An upgrade can be blocked when database objects depend on a function whose signature has to change, for example a
+column default like `id char(21) DEFAULT nanoid()`. PostgreSQL then refuses the `DROP FUNCTION` of the old signature
+and the whole script rolls back. In that case, drop the dependent column defaults, run `nanoid.sql`, and add the
+defaults back (see "Using nanoid() with an existing table" above):
+
+```sql
+ALTER TABLE mytable ALTER COLUMN id DROP DEFAULT;
+-- run nanoid.sql
+ALTER TABLE mytable ALTER COLUMN id SET DEFAULT nanoid();
+```
+
 ## Adding to the default template database
 
 **Use a template database:** If you often create databases that need to have the same set of functions, you could create
@@ -175,7 +191,10 @@ is permissible only for superusers due to its implications for database security
 The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (latest minor
 of every major version from 9.6 through 18) and runs the unit tests plus regression tests against each of them. The
 regression tests cover the parallel-query scenarios from
-[issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation.
+[issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation. Each version also runs
+an upgrade-path test: the previous release (from `origin/main`) is installed first, a table with a dependent
+`DEFAULT nanoid()` column is created, and the current `nanoid.sql` is applied on top; the upgrade must either succeed
+outright or roll back atomically and succeed after the dependent default is dropped.
 
 Requirements: Docker.
 
