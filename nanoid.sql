@@ -31,10 +31,13 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- use-cases requiring small, unpredictable IDs (e.g., URL shorteners, generated file names, etc.).
 -- While it comes with a default configuration, the function is designed to be flexible,
 -- allowing for customization to meet specific needs.
--- The 2022-era signature nanoid(int, text) is dropped so positional calls stay unambiguous after
--- an upgrade. The current signature is intentionally NOT dropped: CREATE OR REPLACE upgrades it
--- in place, which also works when objects (e.g. column defaults) depend on the function.
+-- Old signatures are dropped so positional calls stay unambiguous after an upgrade: the
+-- 2022-era nanoid(int, text) and the pre-prefix nanoid(int, text, float), which cannot be
+-- upgraded in place because the signature gains the prefix parameter. If objects such as
+-- column defaults depend on the old function, the drop is refused and the whole script
+-- rolls back; see the Upgrading section of the README for the recovery steps.
 DROP FUNCTION IF EXISTS nanoid(int, text);
+DROP FUNCTION IF EXISTS nanoid(int, text, float);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.

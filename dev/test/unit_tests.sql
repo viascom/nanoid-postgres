@@ -149,6 +149,17 @@ $$
         ASSERT LENGTH(generated_id) = 21, 'NULL prefix nanoid length is incorrect';
         ASSERT generated_id ~ '^[-_a-zA-Z0-9]*$', 'NULL prefix nanoid contains invalid characters';
 
+        -- The prefix is not validated against the alphabet: characters outside the alphabet
+        -- (including multi-byte ones) pass through unchanged
+        generated_id := nanoid(5, 'abc', 1.6, 'usr#ü_');
+        ASSERT LENGTH(generated_id) = 11, 'Out-of-alphabet prefix nanoid length is incorrect';
+        ASSERT generated_id ~ '^usr#ü_[abc]{5}$', 'Out-of-alphabet prefix was altered or random part is invalid';
+
+        -- Mixed notation: positional size with a named prefix
+        generated_id := nanoid(12, prefix => 'x');
+        ASSERT LENGTH(generated_id) = 13, 'Mixed-notation prefixed nanoid length is incorrect';
+        ASSERT generated_id ~ '^x[-_a-zA-Z0-9]{12}$', 'Mixed-notation prefixed nanoid has a wrong prefix or invalid characters';
+
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
 --             LOOP
