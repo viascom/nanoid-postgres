@@ -47,7 +47,7 @@ CREATE TABLE mytable(
 
 ### Requirements
 
-* PostgreSQL 9.4 or newer
+* PostgreSQL 9.6 or newer (the function declarations use the `PARALLEL` clause, which was introduced in 9.6)
 
 Execute the file `nanoid.sql` to create the `nanoid()` function on your defined schema. The nanoid() function will only
 be available in the specific database where you run the SQL code provided.
@@ -159,6 +159,25 @@ restrict information leakage.
 
 **Note:** To apply the LEAKPROOF attribute, uncomment the LEAKPROOF line in the function definition. This setting
 is permissible only for superusers due to its implications for database security and operation.
+
+## 🧪 Running the tests
+
+The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (latest minor
+of every major version from 9.6 through 18) and runs the unit tests plus regression tests against each of them. The
+regression tests cover the parallel-query scenarios from
+[issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation.
+
+Requirements: Docker.
+
+```bash
+# Test all supported versions (9.6 through 18)
+dev/test/run_tests.sh
+
+# Test only specific versions
+dev/test/run_tests.sh 16 17 18
+```
+
+The script prints a per-version PASS/FAIL summary and exits non-zero if any version fails.
 
 ## Using MySQL/MariaDB?
 
