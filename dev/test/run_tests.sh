@@ -21,7 +21,8 @@
 #
 # Runs the nanoid test suite (installation, unit tests, regression tests) against multiple
 # PostgreSQL major versions using the official Docker images. Images are pulled before each
-# run so the latest minor of every major is tested; offline runs fall back to the local cache.
+# run so the latest minor of every major is tested. A pull failure fails that version by default;
+# set NANOID_TEST_OFFLINE=1 to allow the local image cache when deliberately offline.
 #
 # Usage:
 #   dev/test/run_tests.sh              # all supported versions (9.6 through 18 plus the 19 prerelease)
@@ -52,11 +53,19 @@ for VERSION in $VERSIONS; do
 
     docker rm -f "$NAME" >/dev/null 2>&1
 
-    # Pull the latest minor so a stale local cache is never what gets tested. Offline runs
-    # fall back to the cached image.
-    if ! docker pull -q "$IMAGE" >/dev/null 2>&1 &&
-        ! docker pull -q --platform linux/amd64 "$IMAGE" >/dev/null 2>&1; then
-        echo "    (pull failed, using local image if present)"
+    # Pull the latest minor so a stale local cache is never what gets tested. A pull failure is
+    # fatal by default so a bad tag, auth error, or rate limit cannot silently fall back to a
+    # possibly stale cached image. Set NANOID_TEST_OFFLINE=1 to allow the cache when deliberately offline.
+    if ! PULL_ERR="$(docker pull -q "$IMAGE" 2>&1)" &&
+        ! PULL_ERR="$(docker pull -q --platform linux/amd64 "$IMAGE" 2>&1)"; then
+        if [ "${NANOID_TEST_OFFLINE:-0}" = "1" ] && docker image inspect "$IMAGE" >/dev/null 2>&1; then
+            echo "    (offline: pull failed, using cached ${IMAGE})"
+        else
+            echo "    FAIL (image pull failed: ${PULL_ERR})"
+            SUMMARY="${SUMMARY}${VERSION}: FAIL (image pull failed)\n"
+            FAILED=1
+            continue
+        fi
     fi
 
     # Older images may not provide a native image for the host architecture; fall back to amd64.

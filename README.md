@@ -178,7 +178,8 @@ is permissible only for superusers due to its implications for database security
 The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (every major
 version from 9.6 through 18 plus the current PostgreSQL 19 prerelease) and runs the unit tests plus regression tests
 against each of them. The images are pulled before each run, so the latest minor of every major is what actually gets
-tested; offline runs fall back to the local image cache. The regression tests cover the parallel-query scenarios from
+tested; a pull failure fails that version by default, and you can set `NANOID_TEST_OFFLINE=1` to allow the local image
+cache when you are deliberately offline. The regression tests cover the parallel-query scenarios from
 [issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation.
 
 Requirements: Docker.
