@@ -109,7 +109,7 @@ BEGIN
     END IF;
 
     IF alphabet IS NULL OR length(alphabet) = 0 THEN
-        RAISE EXCEPTION 'The alphabet can''t be undefined, zero or bigger than 255 symbols!';
+        RAISE EXCEPTION 'The alphabet can''t be undefined or zero!';
     END IF;
 
     IF mask IS NULL OR mask < 1 OR step IS NULL OR step < 1 THEN
