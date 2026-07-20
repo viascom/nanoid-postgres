@@ -142,8 +142,9 @@ The `nanoid_optimized()` function is an advanced version of the `nanoid()` funct
 lower memory overhead. While it provides a more efficient mechanism to generate unique identifiers, it assumes that you
 know precisely how you want to use it.
 
-🚫 **Warning**: No checks are performed inside `nanoid_optimized()`. Use it only if you're sure about the parameters you'
-re passing.
+🚫 **Warning**: Apart from minimal termination guards (size, alphabet, cutoff and step must be defined and positive), no
+checks are performed inside `nanoid_optimized()`; in particular the cutoff is not validated against the alphabet. Use it
+only if you're sure about the parameters you're passing.
 
 ### Function Signature
 
@@ -203,9 +204,11 @@ is permissible only for superusers due to its implications for database security
 
 ## 🧪 Running the tests
 
-The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (latest minor
-of every major version from 9.6 through 18) and runs the unit tests plus regression tests against each of them. The
-regression tests cover the parallel-query scenarios from
+The repository ships a test suite that installs `nanoid.sql` into the official PostgreSQL Docker images (every major
+version from 9.6 through 18 plus the current PostgreSQL 19 prerelease) and runs the unit tests plus regression tests
+against each of them. The images are pulled before each run, so the latest minor of every major is what actually gets
+tested; a pull failure fails that version by default, and you can set `NANOID_TEST_OFFLINE=1` to allow the local image
+cache when you are deliberately offline. The regression tests cover the parallel-query scenarios from
 [issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation. Each version also runs
 an upgrade-path test: the previous release (from `origin/main`) is installed first, a table with a dependent
 `DEFAULT nanoid()` column is created, and the current `nanoid.sql` is applied on top; the upgrade must either succeed
@@ -214,7 +217,7 @@ outright or roll back atomically and succeed after the dependent default is drop
 Requirements: Docker.
 
 ```bash
-# Test all supported versions (9.6 through 18)
+# Test all supported versions (9.6 through 18 plus the 19 prerelease)
 dev/test/run_tests.sh
 
 # Test only specific versions
