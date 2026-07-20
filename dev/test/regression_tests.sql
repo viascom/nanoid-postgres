@@ -108,6 +108,24 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------------------------
+-- Issue #32: nanoid_optimized() must reject inputs that would otherwise spin its generation
+-- loop forever (the only exit is reached after a character has been appended).
+-- ---------------------------------------------------------------------------------------------
+DO
+$$
+    DECLARE
+        guard_fired boolean := false;
+    BEGIN
+        BEGIN
+            PERFORM nanoid_optimized(0, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 34);
+        EXCEPTION
+            WHEN raise_exception THEN guard_fired := true;
+        END;
+        ASSERT guard_fired, 'nanoid_optimized() termination guard did not fire';
+    END
+$$;
+
+-- ---------------------------------------------------------------------------------------------
 -- nanoid_non_secure() is PL/pgSQL with volatile expressions too, so the issue #16 constraint
 -- applies to it as well: it must be declared PARALLEL UNSAFE to keep parallel plans away.
 -- ---------------------------------------------------------------------------------------------
