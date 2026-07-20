@@ -108,6 +108,24 @@ END
 $$;
 
 -- ---------------------------------------------------------------------------------------------
+-- Issue #32: nanoid_optimized() must reject inputs that would otherwise spin its generation
+-- loop forever (the only exit is reached after a character has been appended).
+-- ---------------------------------------------------------------------------------------------
+DO
+$$
+    DECLARE
+        guard_fired boolean := false;
+    BEGIN
+        BEGIN
+            PERFORM nanoid_optimized(0, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 34);
+        EXCEPTION
+            WHEN raise_exception THEN guard_fired := true;
+        END;
+        ASSERT guard_fired, 'nanoid_optimized() termination guard did not fire';
+    END
+$$;
+
+-- ---------------------------------------------------------------------------------------------
 -- No artificial size cap: id generation must work for any requested length, including sizes
 -- that need more than 100 passes over the byte-generation loop (step is capped at 1024, so
 -- 102401 characters with the default alphabet need 101 passes).

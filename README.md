@@ -114,8 +114,9 @@ The `nanoid_optimized()` function is an advanced version of the `nanoid()` funct
 lower memory overhead. While it provides a more efficient mechanism to generate unique identifiers, it assumes that you
 know precisely how you want to use it.
 
-🚫 **Warning**: No checks are performed inside `nanoid_optimized()`. Use it only if you're sure about the parameters you'
-re passing.
+🚫 **Warning**: Apart from minimal termination guards (size, alphabet, mask and step must be defined and positive), no
+checks are performed inside `nanoid_optimized()`; in particular the mask is not validated against the alphabet. Use it
+only if you're sure about the parameters you're passing.
 
 ### Function Signature
 
@@ -132,8 +133,8 @@ nanoid_optimized(
 
 - `size`: The desired length of the generated string.
 - `alphabet`: The set of characters to choose from for generating the string.
-- `mask`: The mask used for mapping random bytes to alphabet indices. The value should be `(2^n) - 1`, where `n` is a
-  power of 2 less than or equal to the alphabet size.
+- `mask`: The mask used for mapping random bytes to alphabet indices. The value should be `(2^k) - 1`, where `2^k` is
+  the smallest power of two greater than or equal to the alphabet size.
 - `step`: The number of random bytes to generate in each iteration. A larger value might speed up the function but will
   also increase memory usage.
 
