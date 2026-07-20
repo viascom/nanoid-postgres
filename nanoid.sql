@@ -84,7 +84,8 @@ $$;
 
 -- Generates an optimized random string of a specified size using the given alphabet, cutoff, and step.
 -- This optimized version is designed for higher performance and lower memory overhead.
--- No checks are performed! Use it only if you really know what you are doing.
+-- Beyond the termination guards below, no checks are performed (the cutoff is not validated against
+-- the alphabet)! Use it only if you really know what you are doing.
 -- The drop is required because the third parameter was renamed (mask -> cutoff) and
 -- CREATE OR REPLACE cannot rename parameters. If dependent objects block the drop, the
 -- transaction rolls back; see the Upgrading section of the README.
@@ -113,6 +114,20 @@ DECLARE
     alphabetArray  text[];
     alphabetLength int;
 BEGIN
+    -- Termination guards: without them these inputs would spin the generation loop forever,
+    -- since the only exit is reached after a character has been appended.
+    IF size IS NULL OR size < 1 THEN
+        RAISE EXCEPTION 'The size must be defined and greater than 0!';
+    END IF;
+
+    IF alphabet IS NULL OR length(alphabet) = 0 THEN
+        RAISE EXCEPTION 'The alphabet can''t be undefined or zero!';
+    END IF;
+
+    IF cutoff IS NULL OR cutoff < 1 OR step IS NULL OR step < 1 THEN
+        RAISE EXCEPTION 'The cutoff and step must be defined and greater than 0!';
+    END IF;
+
     alphabetArray := regexp_split_to_array(alphabet, '');
     alphabetLength := array_length(alphabetArray, 1);
 
