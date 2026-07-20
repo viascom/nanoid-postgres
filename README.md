@@ -70,6 +70,22 @@ function can be created manually or through a script if you have many databases.
 function. If you change the function in one database, those changes will only be reflected in the other databases if you
 update each function.
 
+## Upgrading
+
+Running `nanoid.sql` again upgrades an existing installation. The script runs in a single transaction: either the
+upgrade completes as a whole or the database keeps its previous, fully working installation.
+
+An upgrade can be blocked when database objects depend on a function whose signature has to change, for example a
+column default like `id char(21) DEFAULT nanoid()`. PostgreSQL then refuses the `DROP FUNCTION` of the old signature
+and the whole script rolls back. In that case, drop the dependent column defaults, run `nanoid.sql`, and add the
+defaults back (see "Using nanoid() with an existing table" above):
+
+```sql
+ALTER TABLE mytable ALTER COLUMN id DROP DEFAULT;
+-- run nanoid.sql
+ALTER TABLE mytable ALTER COLUMN id SET DEFAULT nanoid();
+```
+
 ## Adding to the default template database
 
 **Use a template database:** If you often create databases that need to have the same set of functions, you could create
@@ -90,23 +106,20 @@ databases will need to have the function added manually if required.
 
 Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
 
-## Calculating the additional bytes factor for a custom alphabet
+## The additional bytes factor
 
-If you change the alphabet of the `nanoid()` function, you could optimize the performance by calculating a new
-additional bytes factor with the following SQL statement:
+`nanoid()` batches its random bytes: the step size `min(1024, ceil(additionalBytesFactor * 256 * size / cutoff))`
+already accounts for the expected share of rejected bytes of your alphabet, so the default factor of `1.6` works well for
+every alphabet (it is the same safety margin the original JavaScript library uses). A higher factor lowers the chance
+that a second `gen_random_bytes()` batch is needed at the cost of more memory per call; a factor closer to `1.0`
+conserves memory but requests follow-up batches more often. The step is capped at 1024 because `gen_random_bytes()`
+accepts at most 1024 bytes per call, so once that cap is reached a higher factor can no longer reduce the number of
+follow-up batches.
 
 ```sql
-WITH input as (SELECT '23456789abcdefghijklmnopqrstuvwxyz' as alphabet)
-SELECT round(1 + abs((((2 << cast(floor(log(length(alphabet) - 1) / log(2)) as int)) - 1) - length(alphabet)::numeric) / length(alphabet)), 2) as "Optimal additional bytes factor"
-FROM input;
-
--- The resulting value can then be used f.e. as follows:
-SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85);
+-- Example: trade a little memory for fewer follow-up batches
+SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 2.0);
 ```
-
-Utilizing a custom-calculated additional bytes factor in `nanoid()`  enhances string generation performance. This factor
-determines how many bytes are generated in a single batch, optimizing computational efficiency. Generating an optimal
-number of bytes per batch minimizes redundant operations and conserves memory.
 
 ## Usage Guide: `nanoid_optimized()`
 
@@ -114,8 +127,8 @@ The `nanoid_optimized()` function is an advanced version of the `nanoid()` funct
 lower memory overhead. While it provides a more efficient mechanism to generate unique identifiers, it assumes that you
 know precisely how you want to use it.
 
-🚫 **Warning**: Apart from minimal termination guards (size, alphabet, mask and step must be defined and positive), no
-checks are performed inside `nanoid_optimized()`; in particular the mask is not validated against the alphabet. Use it
+🚫 **Warning**: Apart from minimal termination guards (size, alphabet, cutoff and step must be defined and positive), no
+checks are performed inside `nanoid_optimized()`; in particular the cutoff is not validated against the alphabet. Use it
 only if you're sure about the parameters you're passing.
 
 ### Function Signature
@@ -124,7 +137,7 @@ only if you're sure about the parameters you're passing.
 nanoid_optimized(
     size int,
     alphabet text,
-    mask int,
+    cutoff int,
     step int
 ) RETURNS text;
 ```
@@ -133,8 +146,8 @@ nanoid_optimized(
 
 - `size`: The desired length of the generated string.
 - `alphabet`: The set of characters to choose from for generating the string.
-- `mask`: The mask used for mapping random bytes to alphabet indices. The value should be `(2^k) - 1`, where `2^k` is
-  the smallest power of two greater than or equal to the alphabet size.
+- `cutoff`: The exclusive upper bound for accepted random bytes. The value should be `256 - (256 % length(alphabet))`;
+  bytes greater than or equal to it are rejected to avoid modulo bias.
 - `step`: The number of random bytes to generate in each iteration. A larger value might speed up the function but will
   also increase memory usage.
 
@@ -143,15 +156,15 @@ nanoid_optimized(
 Generate a NanoId String of length 10 using the default alphabet set:
 
 ```sql
-SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 16);
+SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 16);
 ```
 
 ### Tips:
 
 - **Performance**: This function is optimized for performance, so it's ideal for scenarios where high-speed ID
   generation is needed.
-- **Alphabet Set**: The larger your alphabet set, the more unique your generated IDs will be, but also consider the mask
-  and step parameters' adjustments.
+- **Alphabet Set**: The larger your alphabet set, the more unique your generated IDs will be, but also consider the
+  cutoff and step parameters' adjustments.
 - **Customization**: Feel free to adjust the parameters to suit your specific needs, but always be cautious about the
   values you're inputting.
 
@@ -181,7 +194,10 @@ version from 9.6 through 18 plus the current PostgreSQL 19 prerelease) and runs 
 against each of them. The images are pulled before each run, so the latest minor of every major is what actually gets
 tested; a pull failure fails that version by default, and you can set `NANOID_TEST_OFFLINE=1` to allow the local image
 cache when you are deliberately offline. The regression tests cover the parallel-query scenarios from
-[issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation.
+[issue #16](https://github.com/viascom/nanoid-postgres/issues/16) and large-size id generation. Each version also runs
+an upgrade-path test: the previous release (from `origin/main`) is installed first, a table with a dependent
+`DEFAULT nanoid()` column is created, and the current `nanoid.sql` is applied on top; the upgrade must either succeed
+outright or roll back atomically and succeed after the dependent default is dropped.
 
 Requirements: Docker.
 

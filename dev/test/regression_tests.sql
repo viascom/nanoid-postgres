@@ -69,7 +69,7 @@ FROM nanoid_test_src;
 -- Same reproduction for direct nanoid_optimized() usage, which is a documented public API.
 DROP TABLE IF EXISTS nanoid_test_ctas_optimized;
 CREATE TABLE nanoid_test_ctas_optimized AS
-SELECT nanoid_optimized(21, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 34) AS id
+SELECT nanoid_optimized(21, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 34) AS id
 FROM nanoid_test_src;
 
 -- The exact query shape from issue #16 (backfilling a mapping table).
@@ -117,7 +117,7 @@ $$
         guard_fired boolean := false;
     BEGIN
         BEGIN
-            PERFORM nanoid_optimized(0, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 34);
+            PERFORM nanoid_optimized(0, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 34);
         EXCEPTION
             WHEN raise_exception THEN guard_fired := true;
         END;
@@ -134,7 +134,7 @@ DO
 $$
 BEGIN
     ASSERT length(nanoid(102401)) = 102401, 'large nanoid() failed';
-    ASSERT length(nanoid_optimized(300, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 63, 2)) = 300,
+    ASSERT length(nanoid_optimized(300, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 2)) = 300,
         'nanoid_optimized() with a small step failed';
 END
 $$;
