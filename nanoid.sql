@@ -31,14 +31,18 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 -- use-cases requiring small, unpredictable IDs (e.g., URL shorteners, generated file names, etc.).
 -- While it comes with a default configuration, the function is designed to be flexible,
 -- allowing for customization to meet specific needs.
--- The 2022-era signature nanoid(int, text) is dropped so positional calls stay unambiguous after
--- an upgrade. The current signature is intentionally NOT dropped: CREATE OR REPLACE upgrades it
--- in place, which also works when objects (e.g. column defaults) depend on the function.
+-- Old signatures are dropped so positional calls stay unambiguous after an upgrade: the
+-- 2022-era nanoid(int, text) and the pre-prefix nanoid(int, text, float), which cannot be
+-- upgraded in place because the signature gains the prefix parameter. If objects such as
+-- column defaults depend on the old function, the drop is refused and the whole script
+-- rolls back; see the Upgrading section of the README for the recovery steps.
 DROP FUNCTION IF EXISTS nanoid(int, text);
+DROP FUNCTION IF EXISTS nanoid(int, text, float);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
-    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 255 symbols.
-    additionalBytesFactor float DEFAULT 1.6 -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal to or greater than 1.
+    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
+    additionalBytesFactor float DEFAULT 1.6, -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal to or greater than 1.
+    prefix text DEFAULT '' -- An optional prefix prepended to the NanoId String (e.g. 'usr_'). Does not count towards size; NULL behaves like ''.
 )
     RETURNS text -- A randomly generated NanoId String
     LANGUAGE plpgsql
@@ -59,8 +63,8 @@ BEGIN
         RAISE EXCEPTION 'The size must be defined and greater than 0!';
     END IF;
 
-    IF alphabet IS NULL OR length(alphabet) = 0 OR length(alphabet) > 255 THEN
-        RAISE EXCEPTION 'The alphabet can''t be undefined, zero or bigger than 255 symbols!';
+    IF alphabet IS NULL OR length(alphabet) = 0 OR length(alphabet) > 256 THEN
+        RAISE EXCEPTION 'The alphabet can''t be undefined, zero or bigger than 256 symbols!';
     END IF;
 
     IF additionalBytesFactor IS NULL OR additionalBytesFactor < 1 THEN
@@ -78,7 +82,7 @@ BEGIN
     -- also keeps absurd sizes from overflowing the cast.
     step := cast(least(1024, ceil(additionalBytesFactor * 256 * size / cutoff)) AS int);
 
-    RETURN nanoid_optimized(size, alphabet, cutoff, step);
+    RETURN coalesce(prefix, '') || nanoid_optimized(size, alphabet, cutoff, step);
 END
 $$;
 

@@ -21,6 +21,7 @@ SELECT nanoid(); -- Simplest way to use this function. Creates an id, with the d
 SELECT nanoid(4); -- size parameter set to return 4 digit ids only
 SELECT nanoid(3, 'abcdefghij'); -- custom size and alphabet parameters defined. nanoid() generates ids concerning them.
 SELECT nanoid(10, '23456789abcdefghijklmnopqrstuvwxyz', 1.85); -- nanoid() could generates ids more performant with a custom defined additional bytes factor.
+SELECT nanoid(prefix => 'usr_'); -- prepends a typed prefix to the id, e.g. usr_W9SPTSD4dQk2N5S39mLnT
 ```
 
 ```sql
@@ -41,7 +42,21 @@ or
 CREATE TABLE mytable(
     id char(12) DEFAULT nanoid(12, 'ABC123') PRIMARY KEY
 );
+
+or
+
+-- To use a typed prefix (Stripe-style ids like usr_W9SPTSD4dQk2N5S39mLnT)
+CREATE TABLE mytable(
+    id char(25) DEFAULT nanoid(prefix => 'usr_') PRIMARY KEY
+);
 ```
+
+### Prefixed ids
+
+The optional `prefix` parameter prepends a fixed marker to every generated id, so anyone looking at an id can
+immediately tell which entity it belongs to (`usr_`, `ord_`, ...). The prefix does not count towards `size`: the total
+id length is `length(prefix) + size`, so size your columns accordingly (for example `char(25)` for the default size of
+21 plus the 4-character prefix `usr_`). A `NULL` prefix behaves like an empty prefix.
 
 ### Using nanoid() with an existing table
 

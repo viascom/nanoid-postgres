@@ -22,9 +22,11 @@
 DO
 $$
     DECLARE
-        generated_id text;
-        counter      int;
-        numLoops     int := 1000;
+        generated_id  text;
+        counter       int;
+        numLoops      int := 1000;
+        alphabet256   text;
+        error_message text;
     BEGIN
         -- Default parameters
         FOR counter IN 1..numLoops
@@ -97,6 +99,66 @@ $$
                 ASSERT position(substr('abcdefghijklmnopqrstuvwxyz0123456', counter, 1) in generated_id) > 0,
                     'Symbol missing in output of 33-symbol alphabet';
             END LOOP;
+
+        -- Size 21, maximum-length alphabet (256 unique symbols)
+        -- Requires a UTF8-encoded database: chr() rejects code points above 255 under
+        -- single-byte encodings. The official PostgreSQL Docker images default to UTF8.
+        alphabet256 := (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(192, 447) AS i);
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(21, alphabet256);
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 21, 'Size 21 (256-symbol alphabet) nanoid length is incorrect';
+                ASSERT translate(generated_id, alphabet256, '') = '',
+                    'Size 21 (256-symbol alphabet) nanoid contains characters outside the alphabet';
+            END LOOP;
+
+        -- Alphabets with more than 256 symbols are rejected
+        BEGIN
+            generated_id := nanoid(21, alphabet256 || chr(448));
+            ASSERT FALSE, 'Alphabet with more than 256 symbols was not rejected';
+        EXCEPTION
+            WHEN assert_failure THEN RAISE;
+            WHEN raise_exception THEN
+                GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
+                ASSERT error_message LIKE '%bigger than 256 symbols%',
+                    'Alphabet rejection raised an unexpected error: ' || error_message;
+        END;
+
+        -- Default size (21) with a prefix: the prefix does not count towards the size
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(21, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 1.6, 'usr_');
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 25, 'Prefixed nanoid length is incorrect';
+                ASSERT generated_id ~ '^usr_[-_a-zA-Z0-9]{21}$', 'Prefixed nanoid has a wrong prefix or invalid characters';
+            END LOOP;
+
+        -- Prefix via named notation, all other parameters use their defaults
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(prefix => 'ord_');
+                RAISE NOTICE '%', generated_id;
+                ASSERT LENGTH(generated_id) = 25, 'Named-notation prefixed nanoid length is incorrect';
+                ASSERT generated_id ~ '^ord_[-_a-zA-Z0-9]{21}$', 'Named-notation prefixed nanoid has a wrong prefix or invalid characters';
+            END LOOP;
+
+        -- NULL prefix behaves like no prefix instead of producing a NULL id
+        generated_id := nanoid(21, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 1.6, NULL);
+        ASSERT generated_id IS NOT NULL, 'NULL prefix must not produce a NULL id';
+        ASSERT LENGTH(generated_id) = 21, 'NULL prefix nanoid length is incorrect';
+        ASSERT generated_id ~ '^[-_a-zA-Z0-9]*$', 'NULL prefix nanoid contains invalid characters';
+
+        -- The prefix is not validated against the alphabet: characters outside the alphabet
+        -- (including multi-byte ones) pass through unchanged
+        generated_id := nanoid(5, 'abc', 1.6, 'usr#ü_');
+        ASSERT LENGTH(generated_id) = 11, 'Out-of-alphabet prefix nanoid length is incorrect';
+        ASSERT generated_id ~ '^usr#ü_[abc]{5}$', 'Out-of-alphabet prefix was altered or random part is invalid';
+
+        -- Mixed notation: positional size with a named prefix
+        generated_id := nanoid(12, prefix => 'x');
+        ASSERT LENGTH(generated_id) = 13, 'Mixed-notation prefixed nanoid length is incorrect';
+        ASSERT generated_id ~ '^x[-_a-zA-Z0-9]{12}$', 'Mixed-notation prefixed nanoid has a wrong prefix or invalid characters';
 
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
