@@ -41,7 +41,7 @@ DROP FUNCTION IF EXISTS nanoid(int, text, float);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
     alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
-    additionalBytesFactor float DEFAULT 1.6, -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal or greater then 1.
+    additionalBytesFactor float DEFAULT 1.6, -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal to or greater than 1.
     prefix text DEFAULT '' -- An optional prefix prepended to the NanoId String (e.g. 'usr_'). Does not count towards size; NULL behaves like ''.
 )
     RETURNS text -- A randomly generated NanoId String
