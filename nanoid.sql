@@ -40,7 +40,7 @@ DROP FUNCTION IF EXISTS nanoid(int, text);
 DROP FUNCTION IF EXISTS nanoid(int, text, float);
 CREATE OR REPLACE FUNCTION nanoid(
     size int DEFAULT 21, -- The number of symbols in the NanoId String. Must be greater than 0.
-    alphabet text DEFAULT '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
+    alphabet text DEFAULT 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', -- The symbols used in the NanoId String. Must contain between 1 and 256 symbols.
     additionalBytesFactor float DEFAULT 1.6, -- The additional bytes factor used for calculating the step size. Acts as a safety margin for rejected bytes. Must be equal to or greater than 1.
     prefix text DEFAULT '' -- An optional prefix prepended to the NanoId String (e.g. 'usr_'). Does not count towards size; NULL behaves like ''.
 )
@@ -58,6 +58,7 @@ DECLARE
     alphabetLength int;
     cutoff         int;
     step           int;
+    base64Id       text;
 BEGIN
     IF size IS NULL OR size < 1 THEN
         RAISE EXCEPTION 'The size must be defined and greater than 0!';
@@ -72,6 +73,20 @@ BEGIN
     END IF;
 
     alphabetLength := length(alphabet);
+
+    -- A 64-symbol alphabet is base64 with relabelled symbols, so no byte is rejected.
+    -- 1365 symbols need 1024 bytes, the gen_random_bytes() limit.
+    IF alphabetLength = 64 AND size <= 1365 THEN
+        base64Id := left(replace(encode(gen_random_bytes((size * 3 + 3) / 4), 'base64'), E'\n', ''), size);
+        -- A full 64-symbol translate() costs more than the rest of the call.
+        IF alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_' COLLATE "C" THEN
+            base64Id := translate(base64Id, '+/', '-_');
+        ELSE
+            base64Id := translate(base64Id, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/', alphabet);
+        END IF;
+        RETURN coalesce(prefix, '') || base64Id;
+    END IF;
+
     -- Random bytes are 0-255. `byte % alphabetLength` would make some symbols more likely
     -- when 256 is not a multiple of the alphabet length. Bytes greater than or equal to
     -- `cutoff` are rejected instead, so every symbol keeps an equal chance.

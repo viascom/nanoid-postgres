@@ -26,6 +26,7 @@ $$
         counter       int;
         numLoops      int := 1000;
         alphabet256   text;
+        alphabet64    text;
         error_message text;
     BEGIN
         -- Default parameters
@@ -159,6 +160,48 @@ $$
         generated_id := nanoid(12, prefix => 'x');
         ASSERT LENGTH(generated_id) = 13, 'Mixed-notation prefixed nanoid length is incorrect';
         ASSERT generated_id ~ '^x[-_a-zA-Z0-9]{12}$', 'Mixed-notation prefixed nanoid has a wrong prefix or invalid characters';
+
+        -- 64-symbol alphabets go through base64 encoding: sizes past the 76-character line wrap
+        -- of encode() and across the 1365/1366 switch to the byte loop keep length and charset
+        FOR counter IN 1..1400
+            LOOP
+                generated_id := nanoid(counter);
+                ASSERT LENGTH(generated_id) = counter, 'Size ' || counter || ' nanoid length is incorrect';
+                ASSERT generated_id ~ '^[-_a-zA-Z0-9]*$', 'Size ' || counter || ' nanoid contains invalid characters';
+            END LOOP;
+
+        -- The last symbol must carry 6 full random bits for every size modulo 4: a short byte
+        -- count would limit it to a subset of the alphabet
+        FOR counter IN 1..4
+            LOOP
+                ASSERT (SELECT count(DISTINCT right(nanoid(counter), 1)) FROM generate_series(1, 5000)) = 64,
+                    'Last symbol of size ' || counter || ' nanoid does not cover all 64 symbols';
+            END LOOP;
+
+        -- Every symbol of the default alphabet is reachable
+        generated_id := nanoid(1365);
+        FOR counter IN 1..64
+            LOOP
+                ASSERT position(substr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', counter, 1) in generated_id) > 0,
+                    'Symbol missing in output of the default alphabet';
+            END LOOP;
+
+        -- Custom 64-symbol alphabet with multi-byte symbols: every symbol is reachable and no
+        -- base64 symbol leaks through
+        alphabet64 := 'абвгдежзийклмнопрстуфхцчшщъыьэюяАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(21, alphabet64);
+                ASSERT LENGTH(generated_id) = 21, 'Size 21 (64 multi-byte symbols) nanoid length is incorrect';
+                ASSERT translate(generated_id, alphabet64, '') = '',
+                    'Size 21 (64 multi-byte symbols) nanoid contains characters outside the alphabet';
+            END LOOP;
+        generated_id := nanoid(1365, alphabet64);
+        FOR counter IN 1..64
+            LOOP
+                ASSERT position(substr(alphabet64, counter, 1) in generated_id) > 0,
+                    'Symbol missing in output of a custom 64-symbol alphabet';
+            END LOOP;
 
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
