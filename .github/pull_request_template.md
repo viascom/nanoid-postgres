@@ -1,9 +1,19 @@
 ## Summary
 
-<!-- What changes and why. For behavior ported from ai/nanoid, link the upstream release or commit. -->
+<!-- What changes for users, and why. -->
 
-## Verification
+## Key changes
 
-<!-- How you tested it, for example the dev/test/run_tests.sh summary, benchmarks or distribution checks. -->
+-
+
+## Tests
+
+<!-- Which versions you ran (`dev/test/run_tests.sh ...`) and which tests you added. CI runs the full matrix. -->
+
+## Notes
+
+<!-- Breaking changes, follow-ups, anything reviewers should know. -->
+
+- [ ] README and CHANGELOG (*Unreleased*) updated for user-visible changes
 
 Closes #

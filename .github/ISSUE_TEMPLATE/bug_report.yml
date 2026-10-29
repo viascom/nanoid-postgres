@@ -1,44 +1,40 @@
 name: Bug report
-description: nanoid() or nanoid_optimized() returns a wrong result, raises an unexpected error or does not install
-labels: [ "bug" ]
+description: A function fails, returns a wrong id or does not install.
+labels: [bug]
 body:
   - type: input
-    id: nanoid-version
-    attributes:
-      label: nanoid-postgres version
-      description: "Output of `SELECT obj_description('nanoid'::regproc, 'pg_proc');`. Installs older than 3.1.0 return nothing; name the release or commit you installed instead."
-    validations:
-      required: true
-  - type: input
-    id: postgres-version
+    id: server
     attributes:
       label: PostgreSQL version
-      description: "Output of `SELECT version();`"
+      description: The output of `SELECT version();`, plus the managed service if you use one (Amazon RDS, Cloud SQL, Supabase, ...)
+      placeholder: PostgreSQL 18.6 on x86_64-pc-linux-musl
     validations:
       required: true
   - type: input
-    id: environment
+    id: release
     attributes:
-      label: Environment
-      description: Self-hosted, or the managed service you use (Amazon RDS, Cloud SQL, Azure, Supabase, ...)
+      label: nanoid-postgres release
+      description: "The output of `SELECT obj_description('nanoid'::regproc, 'pg_proc');`. Installations older than 3.1.0 return nothing; name the release or commit you installed instead."
+      placeholder: nanoid-postgres 3.1.0
+    validations:
+      required: true
   - type: textarea
     id: reproduction
     attributes:
       label: Steps to reproduce
-      description: The SQL that shows the problem
+      description: The SQL you ran, ideally a minimal script that reproduces the problem in an empty database.
       render: sql
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected result
+      label: Expected and actual result
+      description: What you expected, what happened instead, and the full error message if there was one.
     validations:
       required: true
   - type: textarea
-    id: actual
+    id: context
     attributes:
-      label: Actual result
-      description: Include the full error message if there is one
-    validations:
-      required: true
+      label: Additional context
+      description: The schema pgcrypto is installed in, the search_path of the calling role, anything else that may matter.

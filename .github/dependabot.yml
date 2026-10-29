@@ -1,13 +1,13 @@
 version: 2
 updates:
-
-  # Enable version updates for GitHub Actions
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  # The 3-day cooldown mirrors the Viascom minimum release age; it does not delay security updates.
+  - package-ecosystem: github-actions
+    directory: /
     schedule:
-      interval: "daily"
-      time: "15:00"
-      timezone: "Europe/Zurich"
-    target-branch: "main"
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Zurich
     cooldown:
       default-days: 3
+    labels: [github-actions, dependencies]

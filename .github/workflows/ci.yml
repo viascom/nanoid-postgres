@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  versions:
+    name: Versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      versions: ${{ steps.versions.outputs.versions }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # run_tests.sh holds the only copy of the version list.
+      - name: Read the default versions
+        id: versions
+        run: echo "versions=$(sed -n 's/^DEFAULT_VERSIONS="\(.*\)"$/\1/p' dev/test/run_tests.sh | jq -Rc 'split(" ")')" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: PostgreSQL ${{ matrix.version }}
+    needs: versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ${{ fromJSON(needs.versions.outputs.versions) }}
+
+    steps:
+      # The upgrade-path test installs the previous release from origin/main.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run the test suite
+        env:
+          POSTGRES_VERSION: ${{ matrix.version }}
+        run: dev/test/run_tests.sh "$POSTGRES_VERSION"

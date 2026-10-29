@@ -1,44 +1,68 @@
 # Contributing to nanoid-postgres
 
-## Before you start
+Contributions are welcome: bug reports, ideas, documentation fixes and code. By taking part you agree to follow the
+[Code of Conduct](CODE_OF_CONDUCT.md).
 
-- **Bugs and feature ideas:** open an [issue](https://github.com/viascom/nanoid-postgres/issues/new/choose) first, so we
-  can agree on the approach before you write code.
-- **Questions:** ask in [Discussions](https://github.com/viascom/nanoid-postgres/discussions).
-- **Security issues:** follow [SECURITY.md](SECURITY.md); never open a public issue.
-
-Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+- **Questions** belong in [Discussions](https://github.com/viascom/nanoid-postgres/discussions).
+- **Bugs and feature ideas** go into an [issue](https://github.com/viascom/nanoid-postgres/issues/new/choose).
+  Issues labeled `good first issue` are a good place to start.
+- **Security problems** must not go into a public issue; see [SECURITY.md](SECURITY.md).
 
 ## Development setup
 
-The whole project is `nanoid.sql`. The tests need Docker and Bash; they install `nanoid.sql` into the official
-PostgreSQL images and run `dev/test/unit_tests.sql`, `dev/test/regression_tests.sql` and an upgrade test against
-each of them:
+All you need is Docker. The test suite starts the official PostgreSQL images, installs `nanoid.sql` and runs the unit
+tests, the regression tests and an upgrade-path test from the previous release:
 
 ```bash
-dev/test/run_tests.sh          # every supported version
-dev/test/run_tests.sh 17 18    # only the given versions
+dev/test/run_tests.sh          # every supported major version (9.6 through 18 plus the 19 prerelease)
+dev/test/run_tests.sh 17 18    # only the given versions, handy while iterating
 ```
 
-The same suite runs in GitHub Actions on every pull request.
+The upgrade-path test installs `nanoid.sql` from `origin/main`, so fetch `main` before running it. CI runs the full
+matrix on every pull request, one job per version.
 
-## Making a change
+`dev/benchmark/` holds an A/B harness: install two implementations as `a_nanoid()` and `b_nanoid()` and run
+`benchmarks.sql` to compare them.
 
-- `nanoid.sql` must keep installing on PostgreSQL 9.6. Use newer syntax or functions only with a fallback for older
-  versions; the test matrix covers 9.6 through the latest prerelease.
-- The script must stay atomic and re-runnable: it runs in one transaction, and running it again upgrades an existing
-  installation. Drop an old function signature only when the signature changes.
-- Add tests with every change: function behavior goes into `dev/test/unit_tests.sql`, a fixed bug gets its own
-  section in `dev/test/regression_tests.sql` named after the issue.
-- When you port behavior from [ai/nanoid](https://github.com/ai/nanoid), link the upstream release or commit.
-- Commit messages and pull request titles follow [Conventional Commits](https://www.conventionalcommits.org/) and end
-  with the issue number, for example `feat: support 256-symbol alphabets #20`.
+## Rules for changes
 
-## Releasing
+- **Supported versions.** `nanoid.sql` must install unchanged on every PostgreSQL major version from 9.6 on, including
+  versions that reached end of life upstream. Use newer syntax or functions only with a fallback for older versions.
+  Dropping a version is a breaking change and ships only in a major release.
+- **Atomic, re-runnable script.** `nanoid.sql` runs in one transaction, and running it again upgrades an existing
+  installation. Use `CREATE OR REPLACE FUNCTION`, and drop an old signature only when the signature changes.
+- **Function declarations:** `VOLATILE` and `PARALLEL UNSAFE` (see issue #16), `LEAKPROOF` left commented out so the
+  script installs without superuser rights.
+- **Inputs are validated** with `RAISE EXCEPTION` in `nanoid()`. `nanoid_optimized()` is the exception and only keeps
+  its termination guards.
+- **Tests come with the change.** New behavior gets a unit test in `dev/test/unit_tests.sql`, a fix gets a section in
+  `dev/test/regression_tests.sql` named after its issue that fails without the fix, and the full matrix has to pass.
+- **Parity:** keep the behavior aligned with [nanoid-mysql-mariadb](https://github.com/viascom/nanoid-mysql-mariadb)
+  and [nanoid-kotlin](https://github.com/viascom/nanoid-kotlin) and, where it makes sense for SQL, with
+  [ai/nanoid](https://github.com/ai/nanoid). If a change only fits PostgreSQL, say why in the pull request.
+- **Documentation:** update `README.md` for any user-visible change and add an entry under *Unreleased* in
+  `CHANGELOG.md`.
 
-Maintainers only:
+## Commits and pull requests
 
-1. Bump the version in the two `COMMENT ON FUNCTION` lines at the end of `nanoid.sql`.
-2. Merge to `main` and wait for the test workflow to pass.
-3. Publish a GitHub release with the tag `X.Y.Z` (no `v` prefix), the title `vX.Y.Z - <summary>`, and notes in the shape
-   of the previous releases.
+- Open or pick an issue first, then branch as `<type>/<issue>-<short-name>`, e.g. `fix/12-null-prefix`.
+- Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:`, `fix:`, `docs:`,
+  `test:`, `chore:`, with `!` for a breaking change (`feat!:`). Reference the issue in the subject (`#12`) and in the
+  body with `Refs #12`.
+- The pull request body says what changed and how you tested it, and ends with `Closes #12`.
+
+## Releases (maintainers)
+
+Versions follow [Semantic Versioning](https://semver.org/). A changed function signature, return type or error
+behavior is a breaking change.
+
+1. Bump the version in the two `COMMENT ON FUNCTION` lines at the end of `nanoid.sql` and move the *Unreleased*
+   entries in `CHANGELOG.md` under the new version.
+2. After the pull request is merged, tag the merge commit as `X.Y.Z` (no `v` prefix).
+3. Publish a GitHub release titled `vX.Y.Z - <short summary>` with notes in the style of the earlier releases:
+   breaking changes, new features, fixes, changes, verification and, for breaking releases, a migration guide.
+
+## License
+
+By contributing you agree that your contribution is licensed under the [Apache License 2.0](LICENSE), the license
+of this project.

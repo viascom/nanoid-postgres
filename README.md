@@ -1,6 +1,6 @@
 # Nano ID for PostgreSQL
 
-[![Test](https://github.com/viascom/nanoid-postgres/actions/workflows/test.yml/badge.svg)](https://github.com/viascom/nanoid-postgres/actions/workflows/test.yml)
+[![CI](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml/badge.svg)](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/viascom/nanoid-postgres)](https://github.com/viascom/nanoid-postgres/releases/latest)
 [![License](https://img.shields.io/github/license/viascom/nanoid-postgres)](LICENSE)
 
@@ -79,7 +79,9 @@ for details.
 
 ### Requirements
 
-* PostgreSQL 9.6 or newer (the function declarations use the `PARALLEL` clause, which was introduced in 9.6)
+* PostgreSQL 9.6 or newer (the function declarations use the `PARALLEL` clause, which was introduced in 9.6). Every
+  major version from 9.6 on stays supported and tested, including versions that reached end of life upstream; dropping
+  one is a breaking change that only ships in a major release and is announced in its release notes.
 * The `pgcrypto` extension, which provides the random bytes. `nanoid.sql` runs
   `CREATE EXTENSION IF NOT EXISTS pgcrypto`: on PostgreSQL 13 and newer pgcrypto is a trusted extension, so a role with
   `CREATE` privilege on the database can install it; on older versions a superuser has to create it before you run the
@@ -263,7 +265,7 @@ dev/test/run_tests.sh 16 17 18
 ```
 
 The script prints a per-version PASS/FAIL summary and exits non-zero if any version fails. The
-[test workflow](https://github.com/viascom/nanoid-postgres/actions/workflows/test.yml) runs the same suite for every
+[CI workflow](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml) runs the same suite for every
 version on each pull request and push to `main`.
 
 ## Using MySQL/MariaDB?
@@ -274,15 +276,19 @@ capabilities in your MySQL/MariaDB databases.
 
 ## 🌱 Contributors Welcome
 
-- 🐛 **Encountered a Bug?** Let us know with an issue. Every bit of feedback helps enhance the project.
+- 🐛 **Encountered a Bug?** Let us know with an [issue](https://github.com/viascom/nanoid-postgres/issues/new/choose).
+  Every bit of feedback helps enhance the project.
 
-- 💡 **Interested in Contributing Code?** Simply fork and submit a pull request. Every contribution, no matter its size,
-  is valued.
+- 💡 **Interested in Contributing Code?** Fork and submit a pull request. [CONTRIBUTING.md](CONTRIBUTING.md) explains
+  how to run the tests and what a change needs. Every contribution, no matter its size, is valued.
 
-- 📣 **Have Some Ideas?** We're always open to suggestions. Initiate an issue for discussions or to share your insights.
+- 📣 **Have Some Ideas or Questions?** Start a thread in
+  [Discussions](https://github.com/viascom/nanoid-postgres/discussions) or open a feature request.
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before you start, report security issues as described in
-[SECURITY.md](SECURITY.md), and follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+- 🔒 **Found a Vulnerability?** Report it privately as described in [SECURITY.md](SECURITY.md).
+
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Changes per release are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 Your active participation 🤝 is a cornerstone of **nanoid-postgres**. Thank you for joining us on this journey.
 
