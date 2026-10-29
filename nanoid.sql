@@ -146,4 +146,8 @@ BEGIN
 END
 $$;
 
+-- The release version, readable with obj_description('nanoid'::regproc, 'pg_proc').
+COMMENT ON FUNCTION nanoid(int, text, float, text) IS 'nanoid-postgres 3.1.0';
+COMMENT ON FUNCTION nanoid_optimized(int, text, int, int) IS 'nanoid-postgres 3.1.0';
+
 COMMIT;

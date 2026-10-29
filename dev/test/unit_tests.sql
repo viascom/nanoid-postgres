@@ -167,3 +167,15 @@ $$
         RAISE NOTICE 'All tests passed successfully!';
     END
 $$;
+-- Both functions carry the same release version as their comment
+DO
+$$
+    DECLARE
+        nanoidVersion text := obj_description('nanoid'::regproc, 'pg_proc');
+    BEGIN
+        ASSERT nanoidVersion ~ '^nanoid-postgres [0-9]+\.[0-9]+\.[0-9]+$',
+            'Unexpected nanoid() comment: ' || coalesce(nanoidVersion, 'NULL');
+        ASSERT obj_description('nanoid_optimized'::regproc, 'pg_proc') = nanoidVersion,
+            'nanoid_optimized() comment does not match nanoid()';
+    END
+$$;
