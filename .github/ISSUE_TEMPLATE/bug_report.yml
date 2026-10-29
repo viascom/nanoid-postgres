@@ -1,0 +1,44 @@
+name: Bug report
+description: nanoid() or nanoid_optimized() returns a wrong result, raises an unexpected error or does not install
+labels: [ "bug" ]
+body:
+  - type: input
+    id: nanoid-version
+    attributes:
+      label: nanoid-postgres version
+      description: "Output of `SELECT obj_description('nanoid'::regproc, 'pg_proc');`. Installs older than 3.1.0 return nothing; name the release or commit you installed instead."
+    validations:
+      required: true
+  - type: input
+    id: postgres-version
+    attributes:
+      label: PostgreSQL version
+      description: "Output of `SELECT version();`"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Self-hosted, or the managed service you use (Amazon RDS, Cloud SQL, Azure, Supabase, ...)
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: The SQL that shows the problem
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include the full error message if there is one
+    validations:
+      required: true

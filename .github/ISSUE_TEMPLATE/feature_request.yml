@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest a new capability or a change to existing behavior
+labels: [ "enhancement" ]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what stops you today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should nanoid-postgres behave? SQL examples help.
+    validations:
+      required: true
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream reference
+      description: Link to the ai/nanoid release, commit or issue, if this ports upstream behavior
