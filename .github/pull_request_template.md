@@ -6,7 +6,7 @@
 
 -
 
-## Tests
+## Manual tests
 
 <!-- Which versions you ran (`dev/test/run_tests.sh ...`) and which tests you added. CI runs the full matrix. -->
 
