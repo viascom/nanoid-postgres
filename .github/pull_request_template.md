@@ -1,6 +1,6 @@
 ## Summary
 
-<!-- What changes for users, and why. -->
+Closes #
 
 ## Key changes
 
@@ -8,12 +8,8 @@
 
 ## Manual tests
 
-<!-- Which versions you ran (`dev/test/run_tests.sh ...`) and which tests you added. CI runs the full matrix. -->
-
 ## Notes
 
-<!-- Breaking changes, follow-ups, anything reviewers should know. -->
-
+- [ ] Tests cover the change (`dev/test/unit_tests.sql` or `dev/test/regression_tests.sql`)
 - [ ] README and CHANGELOG (*Unreleased*) updated for user-visible changes
-
-Closes #
+- [ ] Title follows Conventional Commits
