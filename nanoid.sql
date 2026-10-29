@@ -157,16 +157,17 @@ BEGIN
 END
 $$;
 
--- The functions find gen_random_bytes() and each other through search_path. Pinning it to the schemas they
--- live in keeps them working for callers whose search_path lacks either (e.g. pgcrypto in `extensions`).
+-- Pin search_path so the functions find gen_random_bytes() and each other for any caller (e.g. pgcrypto in `extensions`).
+-- pgcrypto's schema precedes the functions' own, so a schema others can write to there cannot shadow gen_random_bytes().
 DO
 $$
     DECLARE
-        searchPath text := format('pg_catalog, %I, %I', current_schema(),
+        searchPath text := format('pg_catalog, %I, %I',
                                   (SELECT n.nspname
                                    FROM pg_extension e
                                             JOIN pg_namespace n ON n.oid = e.extnamespace
-                                   WHERE e.extname = 'pgcrypto'));
+                                   WHERE e.extname = 'pgcrypto'),
+                                  current_schema());
     BEGIN
         EXECUTE format('ALTER FUNCTION nanoid(int, text, float, text) SET search_path = %s', searchPath);
         EXECUTE format('ALTER FUNCTION nanoid_optimized(int, text, int, int) SET search_path = %s', searchPath);

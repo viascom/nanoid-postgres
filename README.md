@@ -86,8 +86,9 @@ for details.
   `CREATE EXTENSION IF NOT EXISTS pgcrypto`: on PostgreSQL 13 and newer pgcrypto is a trusted extension, so a role with
   `CREATE` privilege on the database can install it; on older versions a superuser has to create it before you run the
   script. pgcrypto may live in any schema, for example `extensions` on Supabase: the script pins the `search_path` of
-  both functions to `pg_catalog`, their own schema and pgcrypto's schema, so they work no matter which `search_path`
-  the calling role has. If you later move pgcrypto or the functions to another schema, run `nanoid.sql` again.
+  both functions to `pg_catalog`, pgcrypto's schema and their own schema, so they work no matter which `search_path`
+  the calling role has. If you later move pgcrypto or the functions to another schema, run `nanoid.sql` again. Keep
+  pgcrypto's schema closed to `CREATE` by untrusted roles: a function created there could shadow `nanoid_optimized()`.
 
 ### Installation
 
