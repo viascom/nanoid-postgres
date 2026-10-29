@@ -1,5 +1,9 @@
 # Nano ID for PostgreSQL
 
+[![CI](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml/badge.svg)](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/viascom/nanoid-postgres)](https://github.com/viascom/nanoid-postgres/releases/latest)
+[![License](https://img.shields.io/github/license/viascom/nanoid-postgres)](LICENSE)
+
 _Inspired by the following parent project: [ai/nanoid](https://github.com/ai/nanoid)_
 
 <img src="./logo.svg" align="right" alt="Nano ID logo by Anton Lovchikov" width="180" height="94">
@@ -75,7 +79,32 @@ for details.
 
 ### Requirements
 
-* PostgreSQL 9.6 or newer (the function declarations use the `PARALLEL` clause, which was introduced in 9.6)
+* PostgreSQL 9.6 or newer (the function declarations use the `PARALLEL` clause, which was introduced in 9.6). Every
+  major version from 9.6 on stays supported and tested, including versions that reached end of life upstream; dropping
+  one is a breaking change that only ships in a major release and is announced in its release notes.
+* The `pgcrypto` extension, which provides the random bytes. `nanoid.sql` runs
+  `CREATE EXTENSION IF NOT EXISTS pgcrypto`: on PostgreSQL 13 and newer pgcrypto is a trusted extension, so a role with
+  `CREATE` privilege on the database can install it; on older versions a superuser has to create it before you run the
+  script.
+
+### Installation
+
+Download `nanoid.sql` from a release tag, so you know exactly which version you install, and run it with `psql`:
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/viascom/nanoid-postgres/3.1.0/nanoid.sql
+psql -v ON_ERROR_STOP=1 -d mydb -f nanoid.sql
+```
+
+### Installed version
+
+Since 3.1.0 both functions carry the release version as their comment:
+
+```sql
+SELECT obj_description('nanoid'::regproc, 'pg_proc'); -- nanoid-postgres 3.1.0
+```
+
+An empty result means an installation older than 3.1.0.
 
 Execute the file `nanoid.sql` to create the `nanoid()` function on your defined schema. The nanoid() function will only
 be available in the specific database where you run the SQL code provided.
@@ -100,6 +129,17 @@ ALTER TABLE mytable ALTER COLUMN id DROP DEFAULT;
 -- run nanoid.sql
 ALTER TABLE mytable ALTER COLUMN id SET DEFAULT nanoid();
 ```
+
+## Uninstalling
+
+```sql
+DROP FUNCTION IF EXISTS nanoid(int, text, float, text);
+DROP FUNCTION IF EXISTS nanoid_optimized(int, text, int, int);
+```
+
+Column defaults that call `nanoid()` block the drop; remove them first with
+`ALTER TABLE ... ALTER COLUMN ... DROP DEFAULT`. The script leaves `pgcrypto` installed, because other objects may use
+it; drop it with `DROP EXTENSION pgcrypto` only if nothing else does.
 
 ## Adding to the default template database
 
@@ -224,7 +264,9 @@ dev/test/run_tests.sh
 dev/test/run_tests.sh 16 17 18
 ```
 
-The script prints a per-version PASS/FAIL summary and exits non-zero if any version fails.
+The script prints a per-version PASS/FAIL summary and exits non-zero if any version fails. The
+[CI workflow](https://github.com/viascom/nanoid-postgres/actions/workflows/ci.yml) runs the same suite for every
+version on each pull request and push to `main`.
 
 ## Using MySQL/MariaDB?
 
@@ -234,14 +276,19 @@ capabilities in your MySQL/MariaDB databases.
 
 ## 🌱 Contributors Welcome
 
-- 🐛 **Encountered a Bug?** Let us know with an issue. Every bit of feedback helps enhance the project.
+- 🐛 **Encountered a Bug?** Let us know with an [issue](https://github.com/viascom/nanoid-postgres/issues/new/choose).
+  Every bit of feedback helps enhance the project.
 
-- 💡 **Interested in Contributing Code?** Simply fork and submit a pull request. Every contribution, no matter its size,
-  is valued.
+- 💡 **Interested in Contributing Code?** Fork and submit a pull request. [CONTRIBUTING.md](CONTRIBUTING.md) explains
+  how to run the tests and what a change needs. Every contribution, no matter its size, is valued.
 
-- 📣 **Have Some Ideas?** We're always open to suggestions. Initiate an issue for discussions or to share your insights.
+- 📣 **Have Some Ideas or Questions?** Start a thread in
+  [Discussions](https://github.com/viascom/nanoid-postgres/discussions) or open a feature request.
 
-All relevant details about the project can be found in this README.
+- 🔒 **Found a Vulnerability?** Report it privately as described in [SECURITY.md](SECURITY.md).
+
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md). Changes per release are listed in
+[CHANGELOG.md](CHANGELOG.md).
 
 Your active participation 🤝 is a cornerstone of **nanoid-postgres**. Thank you for joining us on this journey.
 

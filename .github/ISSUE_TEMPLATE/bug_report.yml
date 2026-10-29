@@ -1,0 +1,40 @@
+name: Bug report
+description: A function fails, returns a wrong id or does not install.
+labels: [bug]
+body:
+  - type: input
+    id: server
+    attributes:
+      label: PostgreSQL version
+      description: The output of `SELECT version();`, plus the managed service if you use one (Amazon RDS, Cloud SQL, Supabase, ...)
+      placeholder: PostgreSQL 18.6 on x86_64-pc-linux-musl
+    validations:
+      required: true
+  - type: input
+    id: release
+    attributes:
+      label: nanoid-postgres release
+      description: "The output of `SELECT obj_description('nanoid'::regproc, 'pg_proc');`. Installations older than 3.1.0 return nothing; name the release or commit you installed instead."
+      placeholder: nanoid-postgres 3.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: The SQL you ran, ideally a minimal script that reproduces the problem in an empty database.
+      render: sql
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual result
+      description: What you expected, what happened instead, and the full error message if there was one.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: The schema pgcrypto is installed in, the search_path of the calling role, anything else that may matter.
