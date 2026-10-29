@@ -9,8 +9,9 @@ All notable changes to this project are documented here. The format follows
 ### Fixed
 
 - `nanoid()` works when pgcrypto lives in its own schema (for example `extensions` on Supabase) or when the caller's
-  `search_path` lacks the functions' schema. `nanoid.sql` pins the `search_path` of both functions to `pg_catalog`,
-  pgcrypto's schema and their own schema; this costs about 7% on the fastest call.
+  `search_path` lacks the functions' schema. `nanoid.sql` qualifies the calls to `gen_random_bytes()` and
+  `nanoid_optimized()` with the schemas found at install time, so functions planted in another schema cannot take
+  their place either.
 - `nanoid()` rejects an additional bytes factor of `Infinity` or `NaN` instead of accepting it, as nanoid-kotlin does.
 - `nanoid_optimized()` rejects a cutoff that is not a multiple of the alphabet length (counting cutoffs above 256 as
   256). Such cutoffs biased the ids or dropped symbols without an error; for example the 2.x mask `63` with the

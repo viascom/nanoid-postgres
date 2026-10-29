@@ -157,20 +157,23 @@ BEGIN
 END
 $$;
 
--- Pin search_path so the functions find gen_random_bytes() and each other for any caller (e.g. pgcrypto in `extensions`).
--- pgcrypto's schema precedes the functions' own, so a schema others can write to there cannot shadow gen_random_bytes().
+-- Qualify the calls to gen_random_bytes() and nanoid_optimized() with their schemas, so neither the caller's
+-- search_path nor a function planted in another schema decides what runs (e.g. with pgcrypto in `extensions`).
 DO
 $$
     DECLARE
-        searchPath text := format('pg_catalog, %I, %I',
-                                  (SELECT n.nspname
-                                   FROM pg_extension e
-                                            JOIN pg_namespace n ON n.oid = e.extnamespace
-                                   WHERE e.extname = 'pgcrypto'),
-                                  current_schema());
+        pgcryptoCall  text := format('%I.gen_random_bytes(',
+                                     (SELECT n.nspname
+                                      FROM pg_extension e
+                                               JOIN pg_namespace n ON n.oid = e.extnamespace
+                                      WHERE e.extname = 'pgcrypto'));
+        optimizedCall text := format('%I.nanoid_optimized(', current_schema());
     BEGIN
-        EXECUTE format('ALTER FUNCTION nanoid(int, text, float, text) SET search_path = %s', searchPath);
-        EXECUTE format('ALTER FUNCTION nanoid_optimized(int, text, int, int) SET search_path = %s', searchPath);
+        EXECUTE replace(pg_get_functiondef('nanoid_optimized(int, text, int, int)'::regprocedure),
+                        'gen_random_bytes(', pgcryptoCall);
+        EXECUTE replace(replace(pg_get_functiondef('nanoid(int, text, float, text)'::regprocedure),
+                                'gen_random_bytes(', pgcryptoCall),
+                        '|| nanoid_optimized(', '|| ' || optimizedCall);
     END
 $$;
 

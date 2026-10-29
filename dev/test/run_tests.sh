@@ -142,11 +142,13 @@ run_extension_schema_test() {
         return 1
     fi
 
-    # A gen_random_bytes() planted in the functions' own schema must not replace pgcrypto's.
+    # Functions planted in the other schema must not replace the ones nanoid() calls: a gen_random_bytes()
+    # next to the nanoid functions, and a nanoid_optimized() next to pgcrypto.
     run_sql "$NAME" schema_test \
-        "CREATE FUNCTION public.gen_random_bytes(integer) RETURNS bytea LANGUAGE sql AS 'SELECT decode(repeat(''00'', \$1), ''hex'')';" >/dev/null
+        "CREATE FUNCTION public.gen_random_bytes(integer) RETURNS bytea LANGUAGE sql AS 'SELECT decode(repeat(''00'', \$1), ''hex'')';
+         CREATE FUNCTION extensions.nanoid_optimized(int, text, int, int) RETURNS text LANGUAGE sql AS 'SELECT ''planted''::text';" >/dev/null
     if [ "$(run_sql "$NAME" schema_test "SELECT count(DISTINCT nanoid()) || '|' || count(DISTINCT nanoid(10, 'abc')) FROM generate_series(1, 10);")" != "10|10" ]; then
-        echo "    extension schema test: a gen_random_bytes() in the functions' schema shadowed pgcrypto's"
+        echo "    extension schema test: a function planted in another schema replaced the one nanoid() calls"
         return 1
     fi
     return 0
