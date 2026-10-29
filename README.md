@@ -85,7 +85,9 @@ for details.
 * The `pgcrypto` extension, which provides the random bytes. `nanoid.sql` runs
   `CREATE EXTENSION IF NOT EXISTS pgcrypto`: on PostgreSQL 13 and newer pgcrypto is a trusted extension, so a role with
   `CREATE` privilege on the database can install it; on older versions a superuser has to create it before you run the
-  script.
+  script. pgcrypto may live in any schema, for example `extensions` on Supabase: the script pins the `search_path` of
+  both functions to `pg_catalog`, their own schema and pgcrypto's schema, so they work no matter which `search_path`
+  the calling role has. If you later move pgcrypto or the functions to another schema, run `nanoid.sql` again.
 
 ### Installation
 
@@ -182,9 +184,9 @@ The `nanoid_optimized()` function is an advanced version of the `nanoid()` funct
 lower memory overhead. While it provides a more efficient mechanism to generate unique identifiers, it assumes that you
 know precisely how you want to use it.
 
-🚫 **Warning**: Apart from minimal termination guards (size, alphabet, cutoff and step must be defined and positive), no
-checks are performed inside `nanoid_optimized()`; in particular the cutoff is not validated against the alphabet. Use it
-only if you're sure about the parameters you're passing.
+🚫 **Warning**: Apart from minimal termination guards (size, alphabet, cutoff and step must be defined and positive) and
+a check that the cutoff is a multiple of the alphabet length, no checks are performed inside `nanoid_optimized()`. Use
+it only if you're sure about the parameters you're passing.
 
 ### Function Signature
 

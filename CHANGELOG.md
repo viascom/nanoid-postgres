@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- `nanoid()` works when pgcrypto lives in its own schema (for example `extensions` on Supabase) or when the caller's
+  `search_path` lacks the functions' schema. `nanoid.sql` pins the `search_path` of both functions to `pg_catalog`,
+  their own schema and pgcrypto's schema; this costs about 7% on the fastest call.
+- `nanoid()` rejects an additional bytes factor of `Infinity` or `NaN` instead of accepting it, as nanoid-kotlin does.
+- `nanoid_optimized()` rejects a cutoff that is not a multiple of the alphabet length (counting cutoffs above 256 as
+  256). Such cutoffs biased the ids or dropped symbols without an error; for example the 2.x mask `63` with the
+  64-symbol default alphabet never produced the last symbol.
+
 ### Added
 
 - CI on GitHub Actions runs the full test matrix on every pull request and push to `main`, one job per PostgreSQL
@@ -18,6 +28,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Changed
 
+- `nanoid()` requests exactly `size` random bytes for alphabets whose length divides 256, since no byte is rejected
+  there, as ai/nanoid 6.0.2 and nanoid-mysql-mariadb do.
 - The license header in every source file is now the standard Apache License 2.0 notice. The license itself is
   unchanged.
 

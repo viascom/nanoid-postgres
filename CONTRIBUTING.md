@@ -34,7 +34,7 @@ matrix on every pull request, one job per version.
 - **Function declarations:** `VOLATILE` and `PARALLEL UNSAFE` (see issue #16), `LEAKPROOF` left commented out so the
   script installs without superuser rights.
 - **Inputs are validated** with `RAISE EXCEPTION` in `nanoid()`. `nanoid_optimized()` is the exception and only keeps
-  its termination guards.
+  its termination guards and the cutoff check.
 - **Tests come with the change.** New behavior gets a unit test in `dev/test/unit_tests.sql`, a fix gets a section in
   `dev/test/regression_tests.sql` named after its issue that fails without the fix, and the full matrix has to pass.
 - **Parity:** keep the behavior aligned with [nanoid-mysql-mariadb](https://github.com/viascom/nanoid-mysql-mariadb)
