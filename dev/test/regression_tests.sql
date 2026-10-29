@@ -134,6 +134,70 @@ BEGIN
 END
 $$;
 
+-- ---------------------------------------------------------------------------------------------
+-- Issue #38: the functions must not depend on the caller's search_path. A caller that only has
+-- pg_catalog on its path reaches them with a qualified call; gen_random_bytes() and
+-- nanoid_optimized() must still resolve inside. run_tests.sh covers pgcrypto in its own schema.
+-- ---------------------------------------------------------------------------------------------
+DO
+$$
+    DECLARE
+        nanoidSchema text := (SELECT pronamespace::regnamespace::text
+                              FROM pg_proc
+                              WHERE oid = 'nanoid(int, text, float, text)'::regprocedure);
+        generatedId  text;
+    BEGIN
+        PERFORM set_config('search_path', 'pg_catalog', true);
+        EXECUTE format('SELECT %s.nanoid()', nanoidSchema) INTO generatedId;
+        ASSERT length(generatedId) = 21, 'Qualified nanoid() failed without its schema on the search_path';
+        EXECUTE format('SELECT %s.nanoid(10, ''abc'')', nanoidSchema) INTO generatedId;
+        ASSERT generatedId ~ '^[abc]{10}$', 'Qualified nanoid() with a custom alphabet failed without its schema on the search_path';
+    END
+$$;
+
+-- ---------------------------------------------------------------------------------------------
+-- Issue #39: edge cases aligned with nanoid-mysql-mariadb and nanoid-kotlin. A non-finite
+-- additional bytes factor is rejected, and nanoid_optimized() rejects a cutoff whose accepted
+-- byte values do not split evenly over the alphabet (biased ids or unreachable symbols).
+-- ---------------------------------------------------------------------------------------------
+DO
+$$
+    DECLARE
+        statement   text;
+        message     text;
+        generatedId text;
+    BEGIN
+        FOREACH statement IN ARRAY ARRAY [
+            'SELECT nanoid(10, ''abc'', ''Infinity'')',
+            'SELECT nanoid(10, ''abc'', ''NaN'')',
+            'SELECT nanoid_optimized(10, ''ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_'', 63, 16)',
+            'SELECT nanoid_optimized(10, ''abc'', 2, 16)',
+            'SELECT nanoid_optimized(10, ''abc'', 256, 16)']
+            LOOP
+                message := NULL;
+                BEGIN
+                    EXECUTE statement;
+                EXCEPTION
+                    WHEN raise_exception THEN message := SQLERRM;
+                END;
+                ASSERT message IS NOT NULL, 'Not rejected: ' || statement;
+            END LOOP;
+
+        -- Cutoffs that split evenly keep working, including values above 256 for alphabets
+        -- whose length divides 256 (every byte is accepted there)
+        ASSERT nanoid_optimized(10, 'abc', 255, 16) ~ '^[abc]{10}$', 'Cutoff 255 with 3 symbols failed';
+        ASSERT nanoid_optimized(10, 'abc', 129, 16) ~ '^[abc]{10}$', 'Cutoff 129 with 3 symbols failed';
+        ASSERT nanoid_optimized(10, '0123456789abcdef', 300, 16) ~ '^[0-9a-f]{10}$', 'Cutoff 300 with 16 symbols failed';
+
+        -- Alphabets whose length divides 256 request exactly size bytes: sizes on both sides of
+        -- the 1024-byte cap still come out complete
+        generatedId := nanoid(1024, '0123456789abcdef');
+        ASSERT length(generatedId) = 1024 AND generatedId ~ '^[0-9a-f]+$', 'Size 1024 with 16 symbols failed';
+        generatedId := nanoid(3000, '01');
+        ASSERT length(generatedId) = 3000 AND generatedId ~ '^[01]+$', 'Size 3000 with 2 symbols failed';
+    END
+$$;
+
 -- Cleanup.
 DROP TABLE IF EXISTS nanoid_test_src;
 DROP TABLE IF EXISTS nanoid_test_ctas;

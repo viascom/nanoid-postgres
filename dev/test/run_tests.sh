@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-# Runs the nanoid test suite (installation, unit tests, regression tests, upgrade-path test)
+# Runs the nanoid test suite (installation, unit tests, regression tests, upgrade-path test,
+# extension schema test)
 # against multiple PostgreSQL major versions using the official Docker images. Images are pulled
 # before each run so the latest minor of every major is tested. A pull failure fails that version
 # by default; set NANOID_TEST_OFFLINE=1 to allow the local image cache when deliberately offline.
@@ -126,6 +127,33 @@ run_upgrade_test() {
     return 0
 }
 
+run_extension_schema_test() {
+    # $1 = container name. Issue #38: with pgcrypto in its own schema (as Supabase does) and a caller
+    # whose search_path only holds the default schemas, nanoid() must still find gen_random_bytes().
+    local NAME="$1"
+    run_sql "$NAME" postgres "DROP DATABASE IF EXISTS schema_test;" >/dev/null &&
+        run_sql "$NAME" postgres "CREATE DATABASE schema_test;" >/dev/null &&
+        run_sql "$NAME" schema_test "CREATE SCHEMA extensions; CREATE EXTENSION pgcrypto SCHEMA extensions;" >/dev/null &&
+        run_sql_file "$NAME" "$REPO_ROOT/nanoid.sql" schema_test ||
+        { echo "    extension schema test: could not install with pgcrypto in its own schema"; return 1; }
+
+    if [ "$(run_sql "$NAME" schema_test "SELECT length(nanoid()) || '|' || length(nanoid(10, 'abc'));")" != "21|10" ]; then
+        echo "    extension schema test: nanoid() failed with pgcrypto outside the caller's search_path"
+        return 1
+    fi
+
+    # Functions planted in the other schema must not replace the ones nanoid() calls: a gen_random_bytes()
+    # next to the nanoid functions, and a nanoid_optimized() next to pgcrypto.
+    run_sql "$NAME" schema_test \
+        "CREATE FUNCTION public.gen_random_bytes(integer) RETURNS bytea LANGUAGE sql AS 'SELECT decode(repeat(''00'', \$1), ''hex'')';
+         CREATE FUNCTION extensions.nanoid_optimized(int, text, int, int) RETURNS text LANGUAGE sql AS 'SELECT ''planted''::text';" >/dev/null
+    if [ "$(run_sql "$NAME" schema_test "SELECT count(DISTINCT nanoid()) || '|' || count(DISTINCT nanoid(10, 'abc')) FROM generate_series(1, 10);")" != "10|10" ]; then
+        echo "    extension schema test: a function planted in another schema replaced the one nanoid() calls"
+        return 1
+    fi
+    return 0
+}
+
 for VERSION in $VERSIONS; do
     IMAGE="postgres:${VERSION}-alpine"
     NAME="nanoid-test-pg$(echo "$VERSION" | tr -d .)"
@@ -193,6 +221,8 @@ for VERSION in $VERSIONS; do
         RESULT="FAIL (regression_tests.sql)"
     elif ! run_upgrade_test "$NAME"; then
         RESULT="FAIL (upgrade test)"
+    elif ! run_extension_schema_test "$NAME"; then
+        RESULT="FAIL (extension schema test)"
     fi
 
     SERVER_VERSION="$(docker exec "$NAME" psql -U postgres -t -A -c 'SHOW server_version;' 2>/dev/null)"

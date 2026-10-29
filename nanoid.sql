@@ -66,16 +66,21 @@ BEGIN
         RAISE EXCEPTION 'The additional bytes factor can''t be less than 1!';
     END IF;
 
+    IF additionalBytesFactor IN ('Infinity', 'NaN') THEN
+        RAISE EXCEPTION 'The additional bytes factor must be a finite number!';
+    END IF;
+
     alphabetLength := length(alphabet);
     -- Random bytes are 0-255. `byte % alphabetLength` would make some symbols more likely
     -- when 256 is not a multiple of the alphabet length. Bytes greater than or equal to
     -- `cutoff` are rejected instead, so every symbol keeps an equal chance.
     cutoff := 256 - (256 % alphabetLength);
     -- On average `256 / cutoff` random bytes are needed per symbol; the additional bytes
-    -- factor adds a safety margin to cover unlucky streaks of rejected bytes.
+    -- factor adds a safety margin to cover unlucky streaks of rejected bytes. Alphabets whose
+    -- length divides 256 never reject a byte, so they need exactly `size` bytes.
     -- gen_random_bytes() accepts at most 1024 bytes per call; capping before the int cast
     -- also keeps absurd sizes from overflowing the cast.
-    step := cast(least(1024, ceil(additionalBytesFactor * 256 * size / cutoff)) AS int);
+    step := cast(least(1024, CASE WHEN cutoff = 256 THEN size ELSE ceil(additionalBytesFactor * 256 * size / cutoff) END) AS int);
 
     RETURN coalesce(prefix, '') || nanoid_optimized(size, alphabet, cutoff, step);
 END
@@ -83,8 +88,8 @@ $$;
 
 -- Generates an optimized random string of a specified size using the given alphabet, cutoff, and step.
 -- This optimized version is designed for higher performance and lower memory overhead.
--- Beyond the termination guards below, no checks are performed (the cutoff is not validated against
--- the alphabet)! Use it only if you really know what you are doing.
+-- Beyond the termination guards and the cutoff check below, no checks are performed! Use it only if
+-- you really know what you are doing.
 -- The drop is required because the third parameter was renamed (mask -> cutoff) and
 -- CREATE OR REPLACE cannot rename parameters. If dependent objects block the drop, the
 -- transaction rolls back; see the Upgrading section of the README.
@@ -130,6 +135,12 @@ BEGIN
     alphabetArray := regexp_split_to_array(alphabet, '');
     alphabetLength := array_length(alphabetArray, 1);
 
+    -- Only when the accepted byte values (0 to cutoff - 1, at most 255) split evenly over the
+    -- alphabet is every symbol equally likely; any other cutoff biases ids or drops symbols.
+    IF least(cutoff, 256) % alphabetLength <> 0 THEN
+        RAISE EXCEPTION 'The cutoff must be a multiple of the alphabet length!';
+    END IF;
+
     LOOP
         bytes := gen_random_bytes(step);
         FOR counter IN 0..step - 1
@@ -144,6 +155,26 @@ BEGIN
             END LOOP;
     END LOOP;
 END
+$$;
+
+-- Qualify the calls to gen_random_bytes() and nanoid_optimized() with their schemas, so neither the caller's
+-- search_path nor a function planted in another schema decides what runs (e.g. with pgcrypto in `extensions`).
+DO
+$$
+    DECLARE
+        pgcryptoCall  text := format('%I.gen_random_bytes(',
+                                     (SELECT n.nspname
+                                      FROM pg_extension e
+                                               JOIN pg_namespace n ON n.oid = e.extnamespace
+                                      WHERE e.extname = 'pgcrypto'));
+        optimizedCall text := format('%I.nanoid_optimized(', current_schema());
+    BEGIN
+        EXECUTE replace(pg_get_functiondef('nanoid_optimized(int, text, int, int)'::regprocedure),
+                        'gen_random_bytes(', pgcryptoCall);
+        EXECUTE replace(replace(pg_get_functiondef('nanoid(int, text, float, text)'::regprocedure),
+                                'gen_random_bytes(', pgcryptoCall),
+                        '|| nanoid_optimized(', '|| ' || optimizedCall);
+    END
 $$;
 
 -- The release version, readable with obj_description('nanoid'::regproc, 'pg_proc').
