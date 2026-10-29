@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  versions:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.versions.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # dev/test/run_tests.sh is the single source of truth for the tested versions.
+      - id: versions
+        run: echo "matrix=$(sed -n 's/^DEFAULT_VERSIONS="\(.*\)"$/\1/p' dev/test/run_tests.sh | jq -Rc 'split(" ")')" >> "$GITHUB_OUTPUT"
+
+  test:
+    name: PostgreSQL ${{ matrix.postgres }}
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ${{ fromJSON(needs.versions.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The upgrade-path test installs origin/main:nanoid.sql as the previous release.
+          fetch-depth: 0
+      - run: dev/test/run_tests.sh "$POSTGRES_VERSION"
+        env:
+          POSTGRES_VERSION: ${{ matrix.postgres }}

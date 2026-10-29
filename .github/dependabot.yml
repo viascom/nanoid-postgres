@@ -1,0 +1,13 @@
+version: 2
+updates:
+
+  # Enable version updates for GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+      time: "15:00"
+      timezone: "Europe/Zurich"
+    target-branch: "main"
+    cooldown:
+      default-days: 3
