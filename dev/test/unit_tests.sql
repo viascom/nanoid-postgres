@@ -236,24 +236,27 @@ $$
 
         -- Flat distribution (upstream criterion) on each generation path: base64 with the default
         -- alphabet, base64 with a full translate(), and the byte loop with cutoff rejection
-        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(defaultAlphabet, 21, 100000);
+        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(defaultAlphabet, 21, 200000);
         ASSERT symbols = 64 AND spread <= 0.05, 'Default alphabet distribution is not flat: ' || spread;
-        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(alphabet64, 21, 50000);
+        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(alphabet64, 21, 200000);
         ASSERT symbols = 64 AND spread <= 0.05, 'Custom 64-symbol distribution is not flat: ' || spread;
         SELECT * INTO symbols, spread FROM pg_temp.symbol_spread('abcdefghijklmnopqrstuvwxyz', 30, 50000);
         ASSERT symbols = 26 AND spread <= 0.05, '26-symbol distribution is not flat: ' || spread;
 
-        -- Alphabet lengths around the base64 path and power-of-two alphabets on the byte loop:
-        -- correct length, only alphabet symbols, every symbol reachable
+        -- Alphabet lengths around the base64 path, power-of-two alphabets on the byte loop, and
+        -- 4-byte UTF-8 symbols (emoji) on both paths: correct length, only alphabet symbols, every
+        -- symbol reachable. Size 1365 is the largest that still takes the base64 path.
         FOREACH alphabet IN ARRAY ARRAY [
             'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-',
             'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.',
             '0123456789abcdef',
-            '01']
+            '01',
+            (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(128512, 128575) AS i),
+            (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(128512, 128516) AS i)]
             LOOP
                 ASSERT length(nanoid(1, alphabet)) = 1, length(alphabet) || '-symbol nanoid(1) length is incorrect';
-                generated_id := nanoid(2000, alphabet);
-                ASSERT length(generated_id) = 2000, length(alphabet) || '-symbol nanoid length is incorrect';
+                generated_id := nanoid(1365, alphabet);
+                ASSERT length(generated_id) = 1365, length(alphabet) || '-symbol nanoid length is incorrect';
                 ASSERT translate(generated_id, alphabet, '') = '',
                     length(alphabet) || '-symbol nanoid contains characters outside the alphabet';
                 FOR counter IN 1..length(alphabet)
