@@ -38,7 +38,7 @@ set -u
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 # Bump the 19 prerelease as new betas/RCs land; replace it with plain 19 at GA.
-DEFAULT_VERSIONS="9.6 10 11 12 13 14 15 16 17 18 19beta1"
+DEFAULT_VERSIONS="9.6 10 11 12 13 14 15 16 17 18 19rc1"
 VERSIONS="${*:-$DEFAULT_VERSIONS}"
 
 SUMMARY=""

@@ -10,7 +10,7 @@ A tiny, secure, URL-friendly, unique string ID generator for Postgres.
 
 * **Small.** Just a simple Postgres function.
 * **Safe.** It uses pgcrypto random generator. Can be used in clusters.
-* **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9_-`). So ID size was reduced from 36 to 21 symbols.
+* **Short IDs.** It uses a larger alphabet than UUID (`A-Za-z0-9-_`). So ID size was reduced from 36 to 21 symbols.
 * **Portable**. Nano ID was ported
   to [over 20 programming languages](https://github.com/ai/nanoid/blob/main/README.md#other-programming-languages).
 
@@ -121,9 +121,19 @@ databases will need to have the function added manually if required.
 
 Reference: [Template Databases](https://www.postgresql.org/docs/current/manage-ag-templatedbs.html)
 
+## 64-symbol alphabets
+
+A 64-symbol alphabet, including the default `A-Za-z0-9-_`, is base64 with relabelled symbols. For these alphabets
+`nanoid()` base64-encodes `gen_random_bytes()` and maps the result onto the alphabet with `translate()`, so no random
+byte is rejected and the per-byte loop is skipped. Every base64 character carries 6 uniformly random bits, so the ids
+stay unbiased. The default alphabet is the fastest case because only `+/` need mapping to `-_`; this applies only to
+the exact order `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_`, so pass it in that order or omit it.
+Sizes above 1365 need more than the 1024 bytes `gen_random_bytes()` returns per call and use the byte loop described
+below.
+
 ## The additional bytes factor
 
-`nanoid()` batches its random bytes: the step size `min(1024, ceil(additionalBytesFactor * 256 * size / cutoff))`
+Outside the base64 path above, `nanoid()` batches its random bytes: the step size `min(1024, ceil(additionalBytesFactor * 256 * size / cutoff))`
 already accounts for the expected share of rejected bytes of your alphabet, so the default factor of `1.6` works well for
 every alphabet (it is the same safety margin the original JavaScript library uses). A higher factor lowers the chance
 that a second `gen_random_bytes()` batch is needed at the cost of more memory per call; a factor closer to `1.0`
@@ -171,7 +181,7 @@ nanoid_optimized(
 Generate a NanoId String of length 10 using the default alphabet set:
 
 ```sql
-SELECT nanoid_optimized(10, '_-0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', 256, 16);
+SELECT nanoid_optimized(10, 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', 256, 16);
 ```
 
 ### Tips:

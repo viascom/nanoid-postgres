@@ -19,14 +19,43 @@
  * under the License.
  */
 
+-- Returns the message of the exception the statement raises, or NULL if it raises none.
+CREATE FUNCTION pg_temp.raised_message(statement text) RETURNS text
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+    EXECUTE statement;
+    RETURN NULL;
+EXCEPTION
+    WHEN raise_exception THEN RETURN SQLERRM;
+END
+$$;
+
+-- Upstream ai/nanoid's flatness check: the per-symbol frequency, normalized to 1.0 for a perfectly
+-- even split, must not spread by more than 0.05 between the most and least frequent symbol.
+CREATE FUNCTION pg_temp.symbol_spread(alphabet text, size int, ids int, OUT symbols bigint, OUT spread float)
+    LANGUAGE sql AS
+$$
+SELECT count(*), (max(n) - min(n)) * length(alphabet)::float / (ids * size)
+FROM (SELECT count(*) n
+      FROM (SELECT regexp_split_to_table(nanoid(size, alphabet), '') ch FROM generate_series(1, ids)) s
+      GROUP BY ch) c
+$$;
+
 DO
 $$
     DECLARE
-        generated_id  text;
-        counter       int;
-        numLoops      int := 1000;
-        alphabet256   text;
-        error_message text;
+        generated_id     text;
+        counter          int;
+        numLoops         int := 1000;
+        alphabet256      text;
+        alphabet64       text;
+        alphabet         text;
+        defaultAlphabet  text;
+        functionSource   text;
+        statement        text;
+        symbols          bigint;
+        spread           float;
     BEGIN
         -- Default parameters
         FOR counter IN 1..numLoops
@@ -114,16 +143,8 @@ $$
             END LOOP;
 
         -- Alphabets with more than 256 symbols are rejected
-        BEGIN
-            generated_id := nanoid(21, alphabet256 || chr(448));
-            ASSERT FALSE, 'Alphabet with more than 256 symbols was not rejected';
-        EXCEPTION
-            WHEN assert_failure THEN RAISE;
-            WHEN raise_exception THEN
-                GET STACKED DIAGNOSTICS error_message = MESSAGE_TEXT;
-                ASSERT error_message LIKE '%bigger than 256 symbols%',
-                    'Alphabet rejection raised an unexpected error: ' || error_message;
-        END;
+        ASSERT pg_temp.raised_message(format('SELECT nanoid(21, %L)', alphabet256 || chr(448))) LIKE '%bigger than 256 symbols%',
+            'Alphabet with more than 256 symbols was not rejected';
 
         -- Default size (21) with a prefix: the prefix does not count towards the size
         FOR counter IN 1..numLoops
@@ -159,6 +180,125 @@ $$
         generated_id := nanoid(12, prefix => 'x');
         ASSERT LENGTH(generated_id) = 13, 'Mixed-notation prefixed nanoid length is incorrect';
         ASSERT generated_id ~ '^x[-_a-zA-Z0-9]{12}$', 'Mixed-notation prefixed nanoid has a wrong prefix or invalid characters';
+
+        -- 64-symbol alphabets go through base64 encoding: sizes past the 76-character line wrap
+        -- of encode() and across the 1365/1366 switch to the byte loop keep length and charset
+        FOR counter IN 1..1400
+            LOOP
+                generated_id := nanoid(counter);
+                ASSERT LENGTH(generated_id) = counter, 'Size ' || counter || ' nanoid length is incorrect';
+                ASSERT generated_id ~ '^[-_a-zA-Z0-9]*$', 'Size ' || counter || ' nanoid contains invalid characters';
+            END LOOP;
+
+        -- The last symbol must carry 6 full random bits for every size modulo 4: a short byte
+        -- count would limit it to a subset of the alphabet
+        FOR counter IN 1..4
+            LOOP
+                ASSERT (SELECT count(DISTINCT right(nanoid(counter), 1)) FROM generate_series(1, 5000)) = 64,
+                    'Last symbol of size ' || counter || ' nanoid does not cover all 64 symbols';
+            END LOOP;
+
+        -- Every symbol of the default alphabet is reachable
+        generated_id := nanoid(1365);
+        FOR counter IN 1..64
+            LOOP
+                ASSERT position(substr('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_', counter, 1) in generated_id) > 0,
+                    'Symbol missing in output of the default alphabet';
+            END LOOP;
+
+        -- Custom 64-symbol alphabet with multi-byte symbols: every symbol is reachable and no
+        -- base64 symbol leaks through
+        alphabet64 := 'абвгдежзийклмнопрстуфхцчшщъыьэюяАБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ';
+        FOR counter IN 1..numLoops
+            LOOP
+                generated_id := nanoid(21, alphabet64);
+                ASSERT LENGTH(generated_id) = 21, 'Size 21 (64 multi-byte symbols) nanoid length is incorrect';
+                ASSERT translate(generated_id, alphabet64, '') = '',
+                    'Size 21 (64 multi-byte symbols) nanoid contains characters outside the alphabet';
+            END LOOP;
+        generated_id := nanoid(1365, alphabet64);
+        FOR counter IN 1..64
+            LOOP
+                ASSERT position(substr(alphabet64, counter, 1) in generated_id) > 0,
+                    'Symbol missing in output of a custom 64-symbol alphabet';
+            END LOOP;
+
+        -- The fast-path comparison in nanoid() must use the declared default alphabet, or the
+        -- default call silently loses its cheap two-symbol translate()
+        SELECT substring(pg_get_expr(proargdefaults, 0) FROM '''([^'']+)'''), prosrc
+        INTO defaultAlphabet, functionSource
+        FROM pg_proc
+        WHERE proname = 'nanoid';
+        ASSERT defaultAlphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_',
+            'Unexpected default alphabet: ' || coalesce(defaultAlphabet, 'NULL');
+        ASSERT position('''' || defaultAlphabet || ''' COLLATE "C"' in functionSource) > 0,
+            'The fast-path comparison in nanoid() does not match the default alphabet';
+
+        -- Flat distribution (upstream criterion) on each generation path: base64 with the default
+        -- alphabet, base64 with a full translate(), and the byte loop with cutoff rejection
+        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(defaultAlphabet, 21, 200000);
+        ASSERT symbols = 64 AND spread <= 0.05, 'Default alphabet distribution is not flat: ' || spread;
+        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread(alphabet64, 21, 200000);
+        ASSERT symbols = 64 AND spread <= 0.05, 'Custom 64-symbol distribution is not flat: ' || spread;
+        SELECT * INTO symbols, spread FROM pg_temp.symbol_spread('abcdefghijklmnopqrstuvwxyz', 30, 50000);
+        ASSERT symbols = 26 AND spread <= 0.05, '26-symbol distribution is not flat: ' || spread;
+
+        -- Alphabet lengths around the base64 path, power-of-two alphabets on the byte loop, and
+        -- 4-byte UTF-8 symbols (emoji) on both paths: correct length, only alphabet symbols, every
+        -- symbol reachable. Size 1365 is the largest that still takes the base64 path.
+        FOREACH alphabet IN ARRAY ARRAY [
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-',
+            'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.',
+            '0123456789abcdef',
+            '01',
+            (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(128512, 128575) AS i),
+            (SELECT string_agg(chr(i), '' ORDER BY i) FROM generate_series(128512, 128516) AS i)]
+            LOOP
+                ASSERT length(nanoid(1, alphabet)) = 1, length(alphabet) || '-symbol nanoid(1) length is incorrect';
+                generated_id := nanoid(1365, alphabet);
+                ASSERT length(generated_id) = 1365, length(alphabet) || '-symbol nanoid length is incorrect';
+                ASSERT translate(generated_id, alphabet, '') = '',
+                    length(alphabet) || '-symbol nanoid contains characters outside the alphabet';
+                FOR counter IN 1..length(alphabet)
+                    LOOP
+                        ASSERT position(substr(alphabet, counter, 1) in generated_id) > 0,
+                            'Symbol missing in output of ' || length(alphabet) || '-symbol alphabet';
+                    END LOOP;
+            END LOOP;
+
+        -- Duplicate symbols are allowed and only make those symbols more likely
+        ASSERT nanoid(50, repeat('ab', 32)) ~ '^[ab]{50}$', 'Duplicate symbols in a 64-symbol alphabet failed';
+        ASSERT nanoid(50, 'aab') ~ '^[ab]{50}$', 'Duplicate symbols in a 3-symbol alphabet failed';
+
+        -- The additional bytes factor accepts its minimum and values far above the 1024-byte step cap
+        ASSERT nanoid(30, '0123456789', 1) ~ '^[0-9]{30}$', 'Additional bytes factor 1 failed';
+        ASSERT nanoid(30, '0123456789', 1000) ~ '^[0-9]{30}$', 'Additional bytes factor 1000 failed';
+
+        -- nanoid_optimized() with a non-power-of-two alphabet and a matching cutoff
+        ASSERT nanoid_optimized(30, '0123456789', 250, 20) ~ '^[0-9]{30}$', 'nanoid_optimized() with 10 symbols failed';
+
+        -- Invalid input raises instead of returning a wrong id or looping forever
+        ASSERT pg_temp.raised_message('SELECT nanoid(NULL)') LIKE '%size must be defined%', 'nanoid(NULL) was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(0)') LIKE '%size must be defined%', 'nanoid(0) was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(-10)') LIKE '%size must be defined%', 'nanoid(-10) was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(21, NULL)') LIKE '%alphabet can''t be undefined%', 'NULL alphabet was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(21, '''')') LIKE '%alphabet can''t be undefined%', 'Empty alphabet was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(21, ''abc'', NULL)') LIKE '%factor can''t be less than 1%', 'NULL additional bytes factor was not rejected';
+        ASSERT pg_temp.raised_message('SELECT nanoid(21, ''abc'', 0.99)') LIKE '%factor can''t be less than 1%', 'Additional bytes factor below 1 was not rejected';
+
+        -- nanoid_optimized() termination guards (issue #32)
+        FOREACH statement IN ARRAY ARRAY [
+            'SELECT nanoid_optimized(NULL, ''abc'', 255, 10)',
+            'SELECT nanoid_optimized(-1, ''abc'', 255, 10)',
+            'SELECT nanoid_optimized(10, NULL, 255, 10)',
+            'SELECT nanoid_optimized(10, '''', 255, 10)',
+            'SELECT nanoid_optimized(10, ''abc'', NULL, 10)',
+            'SELECT nanoid_optimized(10, ''abc'', 0, 10)',
+            'SELECT nanoid_optimized(10, ''abc'', 255, NULL)',
+            'SELECT nanoid_optimized(10, ''abc'', 255, 0)']
+            LOOP
+                ASSERT pg_temp.raised_message(statement) IS NOT NULL, 'Not rejected: ' || statement;
+            END LOOP;
 
         --         -- Intentional false positive: use default size but with a mismatched regex pattern
 --         FOR counter IN 1..numLoops
